@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from django.core.validators import RegexValidator
 from django.db import models, transaction
 from django.utils import timezone
 from django.contrib.auth.models import (AbstractBaseUser, PermissionsMixin, BaseUserManager)
@@ -7,33 +8,85 @@ from django.contrib.auth.models import (AbstractBaseUser, PermissionsMixin, Base
 class UserManager(BaseUserManager):
     def _create_user(self, email, password, **extra_fields):
         if not email:
-            raise ValueError("The given email must be set")
+            raise ValueError("The given name must be set")
         try:
             with transaction.atomic():
-                user = self.model(email=email, **extra_fields)
+                user = self.model(email, **extra_fields)
                 user.set_password(password)
                 user.save(self._db)
                 return user
         except:
             raise
 
+    def create_user(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', False)
+        extra_fields.setdefault('is_superuser', False)
+        return self._create_user(email, password, **extra_fields)
+
+    def create_superuser(self, email, password, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        return self._create_user(email, password=password, **extra_fields)
+
 
 class User(AbstractBaseUser, PermissionsMixin):  # User model is the built-in Django model that provides
     # us with username , email , password , first_name , and last_name fields.
+    # username=models.(max_length=40,unique=True)
     email = models.EmailField(max_length=40, unique=True)
-    first_name = models.CharField(max_length=30, blank=True)
+    first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30, blank=True)
     is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
 
-    object = UserManager()     # Created the object of the User Manager module which contains the fields..
+    object = UserManager()  # Created the object of the User Manager module which contains the fields..
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name']
 
-    # def save(self, *args, **kwargs):
-    #     super(User, self).save(*args, **kwargs)
-    #     return self
+    def save(self, *args, **kwargs):
+        super(User, self).save(*args, **kwargs)
+        return self
 
-# Create your models here.
+
+# class NotesCreation(models.Model):
+#     # note_id = models.IntegerField(default=None,null=True)
+#     title = models.CharField(max_length=150)
+#     description = models.TextField()
+#     created_time = models.DateTimeField(auto_now_add=True,null=True)
+#     remainder = models.DateTimeField(default=None,null=True, blank=True)
+#     is_archived = models.BooleanField(default=False)
+#     is_deleted = models.BooleanField(default=False)
+#     color = models.CharField(default=None, max_length=50, blank=True, null=True)
+#
+#     image = models.ImageField(default=None,null=True)
+#     trash = models.BooleanField(default=False)
+#     is_pinned = models.NullBooleanField(blank=True, null=True, default=None)
+#     label = models.CharField(max_length=50)
+#     collaborate = models.ManyToManyField(User, null=True, blank=True,related_name='collaborated_user')
+#     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owner', null=True, blank=True)
+#
+#     def __str__(self):
+#         return self.title
+#
+#     def get_absolute_url(self):
+#         return reverse('home')
+
+class CreateNotes(models.Model):
+    title = models.CharField(max_length=150,default=None)
+    description = models.TextField()
+    created_time = models.DateTimeField(auto_now_add=True, null=True)
+    remainder = models.DateTimeField(default=None, null=True, blank=True)
+    is_archived = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
+    color = models.CharField(default=None, max_length=50, blank=True, null=True)
+    image = models.ImageField(default=None, null=True)
+    trash = models.BooleanField(default=False)
+    is_pinned = models.NullBooleanField(blank=True, null=True, default=None)
+    label = models.CharField(max_length=50,default=None)
+    collaborate = models.ManyToManyField(User, null=True, blank=True, related_name='collaborated_user')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owner', null=True, blank=True)
+
+    def __str__(self):
+        return self.title
