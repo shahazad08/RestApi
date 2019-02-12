@@ -42,6 +42,12 @@ urlpatterns = [
     path('readnote/<int:pk>/',views.readnote.as_view(), name='readnote'),
     path('deletenote/<int:pk>/',views.deletenote.as_view(), name='deletenote'),
     path('updatenote/<int:pk>/',views.updatenote.as_view(),name='updatenote'),
+
+    path('table/', views.table, name='table'),
+
+    path('paginate/',views.paginate,name='paginate'),
+    path('pratice/',views.pratice,name='pratice'),
+
     # path('deleteenote/<int:pk>', views.deleteenote, name='deleteenote'),
 
 

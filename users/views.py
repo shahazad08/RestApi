@@ -1,4 +1,10 @@
 import jwt
+
+from django.shortcuts import render
+from django.template import loader
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.http import JsonResponse
+
 from django.contrib import messages
 from django.urls import resolve
 from django.contrib.sites.shortcuts import get_current_site
@@ -33,10 +39,15 @@ from django.urls import reverse
 # from django_auth.users.tokens import account_activation_token
 from .forms import SignupForm
 
-from .serializers import NoteSerializer,ReadNoteSerializer
+from .serializers import NoteSerializer, ReadNoteSerializer
 
+from rest_framework.decorators import api_view
+from .models import User, CreateNotes
+from django.core.cache import cache
+from django.conf import settings
+from django.core.cache.backends.base import DEFAULT_TIMEOUT
 
-from .models import User,CreateNotes
+CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
 
 
 # from .serializers import UserSerializer, LoginSerializer
@@ -120,10 +131,15 @@ def logins(request):
                             'password': password,
                         }
 
+                        global token
                         token = jwt.encode(payload, 'SECRET')  # Encodes the token with the secret key and encodes, and
-                        print(token)
+                        # cache.set(token, timeout=CACHE_TTL)
+                        # return Response(token, status=status.HTTP_201_CREATED)
+
+
                         # return HttpResponse(token,{})
-                        return render(request, 'profile.html')  # After Sucessfull returns to the profile page
+                        return render(request, 'profile.html',{'token':token})  # After Sucessfull returns to the profile page
+
                         # return HttpResponse(token)
                     except Exception as e:  # Invalid
                         result = {'error': 'please provide an valid email and a password'}
@@ -141,6 +157,41 @@ def logins(request):
         return HttpResponse(res)
 
 
+# @api_view(['GET'])
+# def login_token(request):
+#     if request.method == "POST":  # if method as post
+#         email = request.POST.get('email')  # Get Email
+#         password = request.POST.get('password')  # Get Password
+#         user = authenticate(email=email, password=password)
+#         # user = User.object.get(email=email, password=password)
+#
+#         if user:  # If it is a User
+#             if user.is_active:  # If a User is active
+#                 login(request, user)  # Login maintains a request and a user
+#                 try:  # The claims in a JWT are encoded as a JSON object that is digitally signed using
+#                     # JSON Web Signature (JWS) and/or encrypted using JSON Web Encryption (JWE)
+#                     payload = {
+#                         'email': email,
+#                         'password': password,
+#                     }
+#
+#                     global token
+#                     token = jwt.encode(payload, 'SECRET')  #
+#                     print(token)
+    # if 'token' in cache:
+    #     tokens = cache.get('token')
+    #     return Response(tokens, status=status.HTTP_201_CREATED)
+    #
+    # else:
+
+
+
+
+
+
+
+
+
 from django.contrib.auth import logout
 
 
@@ -152,11 +203,11 @@ def exit(request):  # For a Logout
 import boto3
 
 
-def fileupload(request):   # Upload a image
+def fileupload(request):  # Upload a image
     return render(request, 'file_upload.html', {})
 
 
-def upload(request):        # Displays the uploaded Image i,e Profile Dashboard
+def upload(request):  # Displays the uploaded Image i,e Profile Dashboard
     return render(request, 'profile.html', {})
 
 
@@ -169,7 +220,7 @@ def upload_profilenew(request):
 
         try:
             print('In Boto3')
-            file = request.FILES['pic'] # Uploading a Pic
+            file = request.FILES['pic']  # Uploading a Pic
             email = request.POST.get('email')
             print('*******************', email)
 
@@ -183,10 +234,10 @@ def upload_profilenew(request):
             messages.error(request, "Please select valid file")
             return render(request, 'profile.html')
 
-        return render(request, 'home.html') # return Home Page
+        return render(request, 'home.html')  # return Home Page
     else:
 
-        return HttpResponse("GET Request") # Get
+        return HttpResponse("GET Request")  # Get
 
 
 # /*****************************************************************************************
@@ -207,8 +258,6 @@ class createnote(CreateAPIView):
     serializer_class = NoteSerializer
     queryset = CreateNotes.objects.all()
 
-
-
     # def post(self, request, format=None):
     #     serializer = NoteSerializer(data=request.data)
     #     # check serialized data is valid or not
@@ -219,23 +268,24 @@ class createnote(CreateAPIView):
     #         return Response(serializer.data, status=status.HTTP_201_CREATED)
     #     # else return error msg in response
     #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 # #
 # class deletenote(CreateAPIView):
-    # serializer_class = DeleteNoteSerializer
-    # queryset = CreateNotes.objects.all()
-    # # @api_view(['POST'])
-    #
-    # def deletenote(self, request, pk, format=None):
-    #     # delete note of given id
-    #     note = CreateNotes.objects.get(pk=pk)
-    #     # delete note
-    #     note.delete()
-    #     # return in response no content
-    #     return Response({"message": "Notes with id `{}` has been deleted.".format(pk)},status=204)
+# serializer_class = DeleteNoteSerializer
+# queryset = CreateNotes.objects.all()
+# # @api_view(['POST'])
+#
+# def deletenote(self, request, pk, format=None):
+#     # delete note of given id
+#     note = CreateNotes.objects.get(pk=pk)
+#     # delete note
+#     note.delete()
+#     # return in response no content
+#     return Response({"message": "Notes with id `{}` has been deleted.".format(pk)},status=204)
 
 #
 class readnote(APIView):
-
     """
     Retrieve, update or delete a event instance.
     """
@@ -257,6 +307,8 @@ class readnote(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 #
 # #
 # class deletenote(APIView):
@@ -278,10 +330,7 @@ class readnote(APIView):
 #     return Response({"message": "Notes with id `{}` has been deleted.".format(pk)},status=204)
 
 
-
-
 class deletenote(APIView):
-
     """
     Retrieve, update or delete a event instance.
     """
@@ -297,21 +346,21 @@ class deletenote(APIView):
     #     serializer = DeleteNoteSerializer(event)
     #     return Response(serializer.data)
 
-    def delete(self, request,pk):
+    def delete(self, request, pk):
         note = CreateNotes.objects.get(pk=pk)
         # delete note
         note.delete()
         # return in response no content
-        return Response({"message": "Notes with id `{}` has been deleted.".format(pk)},status=204)
+        return Response({"message": "Notes with id `{}` has been deleted.".format(pk)}, status=204)
 
 
 # serializers = ReadNoteSerializer(data=request.DATA)
-        # serializers.delete()
-        # # if serializer.is_valid():
-        # #     serializer.save()
-        # #     return Response(serializer.data, status=status.HTTP_201_CREATED)
-        # # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        # return Response({"message": "Notes with id `{}` has been deleted.".format(pk)}, status=204)
+# serializers.delete()
+# # if serializer.is_valid():
+# #     serializer.save()
+# #     return Response(serializer.data, status=status.HTTP_201_CREATED)
+# # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+# return Response({"message": "Notes with id `{}` has been deleted.".format(pk)}, status=204)
 
 
 class updatenote(APIView):
@@ -328,10 +377,7 @@ class updatenote(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         # else return error msg in response
 
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 
     # def put(self, request,pk):
     #     data = request.data
@@ -345,3 +391,53 @@ class updatenote(APIView):
     # note=CreateNotes.objects.get(pk=pk)
     # note.update()
 
+
+def table(request):
+    notes = CreateNotes.objects.all()
+    return render(request, 'notes/index.html', {'notes': notes})
+
+
+def paginate(request):
+    notes1 = CreateNotes.objects.all()[:3]
+    return render(request, 'notes/paginate.html', {'notes1': notes1})
+
+
+#
+def lazy_load_notes(request):
+    page = request.POST.get('page')
+    notes1 = CreateNotes.objects.all()
+    print(notes1)
+    # use Django's pagination
+    # https://docs.djangoproject.com/en/dev/topics/pagination/
+    results_per_page = 3
+    paginator = Paginator(notes1, results_per_page)
+    try:
+        notes1 = paginator.page(page)
+    except PageNotAnInteger:
+        notes1 = paginator.page(2)
+    except EmptyPage:
+        notes1 = paginator.page(paginator.num_pages)
+
+    # build a html posts list with the paginated posts
+    notes_html = loader.render_to_string('notes/note_pages.html', {'notes1': notes1})
+
+    # package output data and return it as a JSON object
+    output_data = {'notes_html': notes_html, 'has_next': notes1.has_next()}
+    return JsonResponse(output_data)
+    # return render(request, 'notes/notes_list.html', {{'notes': notes}})
+
+
+
+
+
+def pratice(request):
+    # notes=CreateNotes.objects.all()
+    a=10,20
+    d = [1, 2, 3, 4, 5, 6, 'Hello', 'Shahazad']
+    return render(request,'notes/pratice.html', {'d':d},{'a',a})
+
+
+#
+# def pratice(request):
+#     notes=CreateNotes.objects.all()
+#     return render(request,'notes/pratice.html',{'notes':notes})
