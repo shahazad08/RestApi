@@ -45,29 +45,9 @@ urlpatterns = [
 
     path('table/', views.table, name='table'),
 
-    path('paginate/',views.paginate,name='paginate'),
-    path('pratice/',views.pratice,name='pratice'),
+    path('pratice/', views.pratice,name='pratice'),
 
-    # path('deleteenote/<int:pk>', views.deleteenote, name='deleteenote'),
+    path('page/', views.PostListAPIView.as_view(), name='page'),
 
+]
 
-    # url(r'^notes/', include(('Notes.urls','Notes'),namespace='Notes')),
-
-
-
-#log_me
-    # url(r'^register/',include('users.urls')),
-    # url(r'^register1/', include('users.urls')),
-    # url(r'^$', 'home', name='home'),
-    # url(r'^user/', include(('users.urls','users'),namespace='users')),  # create model
-    # url(r'^temail/',include('users.urls')),
-    # url(r'^log_me/',include('users.urls')),
-    # url(r'^log_me/', include('users.urls')),
-
-    #path('log_me/', views.log_me, name='log_me'),
-    # url('^', include('django.cont
-    # rib.auth.urls')),
-    #path('log_user/', views.logins, name='log_user'),
-] #url(r'^login_use/', include('users.urls')),
-
-# urlpatterns=format_suffix_patterns(urlpatterns)

@@ -1,11 +1,12 @@
 import jwt
-
+from rest_framework.filters import OrderingFilter
 from django.shortcuts import render
 from django.template import loader
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
-
+# from decorators import apiview
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.urls import resolve
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import EmailMessage
@@ -39,13 +40,14 @@ from django.urls import reverse
 # from django_auth.users.tokens import account_activation_token
 from .forms import SignupForm
 
-from .serializers import NoteSerializer, ReadNoteSerializer
+from .serializers import NoteSerializer, ReadNoteSerializer,PageNoteSerializer
 
 from rest_framework.decorators import api_view
 from .models import User, CreateNotes
 from django.core.cache import cache
 from django.conf import settings
 from django.core.cache.backends.base import DEFAULT_TIMEOUT
+# from django.core.paginator import Paginator
 
 CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
 
@@ -254,37 +256,13 @@ def upload_profilenew(request):
 #     queryset = User.object.all()
 
 
+
 class createnote(CreateAPIView):
     serializer_class = NoteSerializer
-    queryset = CreateNotes.objects.all()
-
-    # def post(self, request, format=None):
-    #     serializer = NoteSerializer(data=request.data)
-    #     # check serialized data is valid or not
-    #     if serializer.is_valid():
-    #         # if valid then save it
-    #         serializer.save()
-    #         # in response return data in json format
-    #         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    #     # else return error msg in response
-    #     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    notes = CreateNotes.objects.all()
 
 
-# #
-# class deletenote(CreateAPIView):
-# serializer_class = DeleteNoteSerializer
-# queryset = CreateNotes.objects.all()
-# # @api_view(['POST'])
-#
-# def deletenote(self, request, pk, format=None):
-#     # delete note of given id
-#     note = CreateNotes.objects.get(pk=pk)
-#     # delete note
-#     note.delete()
-#     # return in response no content
-#     return Response({"message": "Notes with id `{}` has been deleted.".format(pk)},status=204)
 
-#
 class readnote(APIView):
     """
     Retrieve, update or delete a event instance.
@@ -379,52 +357,17 @@ class updatenote(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # def put(self, request,pk):
-    #     data = request.data
-    #     qs = CreateNotes.filter(pk=pk)
-    #     serializer = ReadNoteSerializer(qs, data=data, many=True)
-    #
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #
-    #         return Response(serializer.data)
-    # note=CreateNotes.objects.get(pk=pk)
-    # note.update()
-
 
 def table(request):
-    notes = CreateNotes.objects.all()
+    notes = CreateNotes.objects.all().order_by('-created_time')
     return render(request, 'notes/index.html', {'notes': notes})
 
 
 def paginate(request):
-    notes1 = CreateNotes.objects.all()[:3]
+    notes1 = CreateNotes.objects.all()[:4]
     return render(request, 'notes/paginate.html', {'notes1': notes1})
 
 
-#
-def lazy_load_notes(request):
-    page = request.POST.get('page')
-    notes1 = CreateNotes.objects.all()
-    print(notes1)
-    # use Django's pagination
-    # https://docs.djangoproject.com/en/dev/topics/pagination/
-    results_per_page = 3
-    paginator = Paginator(notes1, results_per_page)
-    try:
-        notes1 = paginator.page(page)
-    except PageNotAnInteger:
-        notes1 = paginator.page(2)
-    except EmptyPage:
-        notes1 = paginator.page(paginator.num_pages)
-
-    # build a html posts list with the paginated posts
-    notes_html = loader.render_to_string('notes/note_pages.html', {'notes1': notes1})
-
-    # package output data and return it as a JSON object
-    output_data = {'notes_html': notes_html, 'has_next': notes1.has_next()}
-    return JsonResponse(output_data)
-    # return render(request, 'notes/notes_list.html', {{'notes': notes}})
 
 
 
@@ -437,7 +380,21 @@ def pratice(request):
     return render(request,'notes/pratice.html', {'d':d},{'a',a})
 
 
-#
-# def pratice(request):
-#     notes=CreateNotes.objects.all()
-#     return render(request,'notes/pratice.html',{'notes':notes})
+
+
+
+from rest_framework import generics
+from .paginate import PostLimitOffsetPagination, PostPageNumberPagination
+from rest_framework.filters import SearchFilter
+
+class PostListAPIView(generics.ListAPIView):
+    serializer_class=PageNoteSerializer
+    filter_backends=[SearchFilter,OrderingFilter]
+    # search_fields=['title','description']
+    pagination_class= PostPageNumberPagination
+
+    def get_queryset(self,*args,**kwargs):
+        query_list=CreateNotes.objects.filter()
+        return query_list
+
+

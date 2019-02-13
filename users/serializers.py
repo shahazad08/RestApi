@@ -2,7 +2,12 @@ from rest_framework.validators import UniqueValidator
 
 from .models import User, CreateNotes
 from rest_framework import serializers  # Serializers allow complex data such as query sets and model instances to be
+# from rest_framework.pagination import PaginationSerializer
+from django.core.paginator import Paginator
+from rest_framework import pagination
 
+
+# from rest_framework.pagination import PaginationSerializer
 
 # converted to native Python data types that can then be easily rendered into JSON, XML or other content types
 
@@ -37,7 +42,6 @@ class LoginSerializer(serializers.ModelSerializer):  # Created the user serializ
 # ***********************************************************************************
 
 
-
 #
 # class registrationSerializer(serializers.ModelSerializer):
 #     username = serializers.CharField(max_length=20)
@@ -54,14 +58,25 @@ class LoginSerializer(serializers.ModelSerializer):  # Created the user serializ
 
 
 class NoteSerializer(serializers.ModelSerializer):
+    title= serializers.RegexField(regex=r"^[a-zA-Z]+$",required=True)
+    color= serializers.RegexField(regex=r"^[a-zA-Z]+$",required=True)
+    label = serializers.RegexField(regex=r"^[a-zA-Z]+$", required=True)
+
     class Meta:
         model = CreateNotes
         # fields = '__all__'
-        fields=('title','description','color','label')
+        fields = ('title', 'description', 'color', 'label')
 
 
 class ReadNoteSerializer(serializers.ModelSerializer):
     class Meta:
-        model=CreateNotes
+        model = CreateNotes
         fields = '__all__'
+
+
+
+class PageNoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CreateNotes
+        fields = ('title', 'description')
 
