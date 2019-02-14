@@ -49,5 +49,7 @@ urlpatterns = [
 
     path('page/', views.PostListAPIView.as_view(), name='page'),
 
+    path('token/',views. recipes_view,name='token'),
+
 ]
 

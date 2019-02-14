@@ -40,13 +40,21 @@ from django.urls import reverse
 # from django_auth.users.tokens import account_activation_token
 from .forms import SignupForm
 
-from .serializers import NoteSerializer, ReadNoteSerializer,PageNoteSerializer
+from .serializers import NoteSerializer, ReadNoteSerializer, PageNoteSerializer
 
 from rest_framework.decorators import api_view
 from .models import User, CreateNotes
 from django.core.cache import cache
 from django.conf import settings
-from django.core.cache.backends.base import DEFAULT_TIMEOUT
+
+from rest_framework import generics  # For a List API use a generics
+from .paginate import PostLimitOffsetPagination, PostPageNumberPagination  # Creating our own no. of records in a Pages
+from rest_framework.filters import SearchFilter  # it allows users to filter down a queryset based on a model's
+# fields, displaying the form to let them do this.
+
+
+from django.core.cache.backends.base import DEFAULT_TIMEOUT  # Setting a time for a cache to store
+
 # from django.core.paginator import Paginator
 
 CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
@@ -138,9 +146,9 @@ def logins(request):
                         # cache.set(token, timeout=CACHE_TTL)
                         # return Response(token, status=status.HTTP_201_CREATED)
 
-
                         # return HttpResponse(token,{})
-                        return render(request, 'profile.html',{'token':token})  # After Sucessfull returns to the profile page
+                        return render(request, 'profile.html',
+                                      {'token': token})  # After Sucessfull returns to the profile page
 
                         # return HttpResponse(token)
                     except Exception as e:  # Invalid
@@ -157,6 +165,12 @@ def logins(request):
     except Exception as e:
         res = {'error': 'please provide an valid email and a password'}
         return HttpResponse(res)
+
+
+# @cache_page(CACHE_TTL)
+def recipes_view(request):
+    tokens = token
+    return render(request, 'receive.html', {tokens: tokens})
 
 
 # @api_view(['GET'])
@@ -180,18 +194,11 @@ def logins(request):
 #                     global token
 #                     token = jwt.encode(payload, 'SECRET')  #
 #                     print(token)
-    # if 'token' in cache:
-    #     tokens = cache.get('token')
-    #     return Response(tokens, status=status.HTTP_201_CREATED)
-    #
-    # else:
-
-
-
-
-
-
-
+# if 'token' in cache:
+#     tokens = cache.get('token')
+#     return Response(tokens, status=status.HTTP_201_CREATED)
+#
+# else:
 
 
 from django.contrib.auth import logout
@@ -242,7 +249,7 @@ def upload_profilenew(request):
         return HttpResponse("GET Request")  # Get
 
 
-# /*****************************************************************************************
+# /***********************************Template for a RestAPI ******************************************************
 
 #
 # class CreateUserAPIView(CreateAPIView):
@@ -256,14 +263,36 @@ def upload_profilenew(request):
 #     queryset = User.object.all()
 
 
+# /**********************************Notes****************************************************************
 
-class createnote(CreateAPIView):
+class createnote(CreateAPIView):  # Creates a Note using REST API
     serializer_class = NoteSerializer
     notes = CreateNotes.objects.all()
 
 
+class readnote(APIView):  # Read a Note
 
-class readnote(APIView):
+    """
+    Retrieve, update or delete a event instance.
+    """
+
+    def get_object(self, pk):  # Get the data of a particular record through the primary key
+        try:
+            return CreateNotes.objects.get(pk=pk)  # IF the requested pk matches then return the pk of a record
+        except Event.DoesNotExist:  # Raise Error, data not found
+            raise Http404
+
+    def get(self, request, pk):  # Used GET method to display the record
+        try:
+            if pk is not None:
+                event = self.get_object(pk)  # Assign the pk(data) to the event
+                serializer = ReadNoteSerializer(event)  # Using pk display the values in a serializer field
+                return Response(serializer.data)  # Display the data
+        except Exception as e:
+            return Response({"message": "Notes with id `{}` is not present.".format(pk)}, status=204)
+
+
+class deletenote(APIView):  # Delete a Note
     """
     Retrieve, update or delete a event instance.
     """
@@ -273,128 +302,65 @@ class readnote(APIView):
             return CreateNotes.objects.get(pk=pk)
         except Event.DoesNotExist:
             raise Http404
-
-    def get(self, request, pk, format=None):
-        event = self.get_object(pk)
-        serializer = ReadNoteSerializer(event)
-        return Response(serializer.data)
-
-    def post(self, request, format=None):
-        serializer = ReadNoteSerializer(data=request.DATA)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-#
-# #
-# class deletenote(APIView):
-#     serializer_class = DeleteNoteSerializer
-#     queryset = CreateNotes.objects.all()
-#
-#
-# @api_view(["DELETE"])
-# def delete(request, product_id):
-#     CreateNotes.objects.get(id=product_id).delete()
-#     return Response({"message": "Notes with id `{}` has been deleted.".format(pk)},status=204)
-
-#
-# # #
-# def delete(self, request, pk):
-#     # Get object with this pk
-#     article = get_object_or_404(CreateNotes.objects.all(), pk=pk)
-#     article.delete()
-#     return Response({"message": "Notes with id `{}` has been deleted.".format(pk)},status=204)
-
-
-class deletenote(APIView):
-    """
-    Retrieve, update or delete a event instance.
-    """
-
-    def get_object(self, pk):
-        try:
-            return CreateNotes.objects.get(pk=pk)
-        except Event.DoesNotExist:
-            raise Http404
-
-    # def get(self, request, pk, format=None):
-    #     event = self.get_object(pk)
-    #     serializer = DeleteNoteSerializer(event)
-    #     return Response(serializer.data)
 
     def delete(self, request, pk):
-        note = CreateNotes.objects.get(pk=pk)
-        # delete note
-        note.delete()
-        # return in response no content
-        return Response({"message": "Notes with id `{}` has been deleted.".format(pk)}, status=204)
+        try:
+            if pk is not None:
+                note = CreateNotes.objects.get(pk=pk)
+                # delete note
+                note.delete()
+                # return in response no content
+                return Response({"message": "Notes with id `{}` has been deleted.".format(pk)}, status=204)
+
+        except Exception as e:
+            return Response({"message": "Notes with id `{}` is not present.".format(pk)}, status=204)
 
 
-# serializers = ReadNoteSerializer(data=request.DATA)
-# serializers.delete()
-# # if serializer.is_valid():
-# #     serializer.save()
-# #     return Response(serializer.data, status=status.HTTP_201_CREATED)
-# # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-# return Response({"message": "Notes with id `{}` has been deleted.".format(pk)}, status=204)
+class updatenote(APIView):  # Update a Note
+
+    def put(self, request, pk):  # get all the notes of given requested id(pk)
+        try:
+            note = CreateNotes.objects.get(pk=pk)
+            # requested data is serialized and store it in serializer variable
+            serializer = ReadNoteSerializer(note, data=request.data)
+            # check serialized data is valid or not
+            if serializer.is_valid():
+                # if valid then save it
+                serializer.save()
+                # in response return data in json format
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            # else return error msg in response
+        except Exception as e:
+            return Response({"message": "Notes with id `{}` is not present, so cant update.".format(pk)}, status=204)
+
+            # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class updatenote(APIView):
-    def put(self, request, pk, format=None):
-        # get all the notes of given requested id(pk)
-        note = CreateNotes.objects.get(pk=pk)
-        # requested data is serialized and store it in serializer variable
-        serializer = ReadNoteSerializer(note, data=request.data)
-        # check serialized data is valid or not
-        if serializer.is_valid():
-            # if valid then save it
-            serializer.save()
-            # in response return data in json format
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        # else return error msg in response
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-def table(request):
-    notes = CreateNotes.objects.all().order_by('-created_time')
+def table(request):     # Display the contents of the tables using a Jinga Template
+    notes = CreateNotes.objects.all().order_by('-created_time') # Sort the Notes according to the time
     return render(request, 'notes/index.html', {'notes': notes})
 
 
-def paginate(request):
-    notes1 = CreateNotes.objects.all()[:4]
-    return render(request, 'notes/paginate.html', {'notes1': notes1})
 
 
 
+class PostListAPIView(generics.ListAPIView):  # Viweing the ListAPI Views that
+    serializer_class = PageNoteSerializer  # Assigning a Notes serializers fields in a Serializer class
+    filter_backends = [SearchFilter, OrderingFilter]
+    # search_fields=['title','description']
+    pagination_class = PostPageNumberPagination  # Create our own limit of records in a pages
+
+    def get_queryset(self, *args, **kwargs):  # Method for a itrerating of pages
+        query_list = CreateNotes.objects.filter()  # Filter down a queryset based on a model's
+        # fields, displaying the form to let them do this.
+
+        return query_list
 
 
 
 
 def pratice(request):
     # notes=CreateNotes.objects.all()
-    a=10,20
+    a = 10, 20
     d = [1, 2, 3, 4, 5, 6, 'Hello', 'Shahazad']
-    return render(request,'notes/pratice.html', {'d':d},{'a',a})
-
-
-
-
-
-from rest_framework import generics
-from .paginate import PostLimitOffsetPagination, PostPageNumberPagination
-from rest_framework.filters import SearchFilter
-
-class PostListAPIView(generics.ListAPIView):
-    serializer_class=PageNoteSerializer
-    filter_backends=[SearchFilter,OrderingFilter]
-    # search_fields=['title','description']
-    pagination_class= PostPageNumberPagination
-
-    def get_queryset(self,*args,**kwargs):
-        query_list=CreateNotes.objects.filter()
-        return query_list
-
-
+    return render(request, 'notes/pratice.html', {'d': d}, {'a', a})

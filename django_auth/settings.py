@@ -58,6 +58,8 @@ CACHES = {
     }
 }
 
+CACHE_TTL = 60 * 15
+
 INSTALLED_APPS = [
     'users',
     # 'Notes',

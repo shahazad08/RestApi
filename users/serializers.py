@@ -58,17 +58,20 @@ class LoginSerializer(serializers.ModelSerializer):  # Created the user serializ
 
 
 class NoteSerializer(serializers.ModelSerializer):
-    title= serializers.RegexField(regex=r"^[a-zA-Z]+$",required=True)
-    color= serializers.RegexField(regex=r"^[a-zA-Z]+$",required=True)
-    label = serializers.RegexField(regex=r"^[a-zA-Z]+$", required=True)
+    title= serializers.RegexField(regex=r"^[a-zA-Z0-9.' ']+$",required=True) # Title can be a indicates number,name,spaces
+    # color= serializers.RegexField(regex=r"^[a-zA-Z,' ']+$",required=True) # colors can indicates more than 1 and it is seperated by ,
+    color=serializers.RegexField(regex=r"^[-\#]+[-\w\s]+[-\w\s]+(?:,[-\w\s]*)*$",required=True)
+    label=serializers.CharField()
 
     class Meta:
         model = CreateNotes
         # fields = '__all__'
-        fields = ('title', 'description', 'color', 'label')
+        fields = ('title', 'description', 'color', 'label','is_pinned')
 
 
 class ReadNoteSerializer(serializers.ModelSerializer):
+    # title = serializers.RegexField(regex=r"^[a-zA-Z0-9.' ']+$", required=True)  # Title can be a indicates number,name,spaces
+    # color = serializers.RegexField(regex=r"^[a-zA-Z,' ']+$", required=True)
     class Meta:
         model = CreateNotes
         fields = '__all__'
@@ -79,4 +82,5 @@ class PageNoteSerializer(serializers.ModelSerializer):
     class Meta:
         model = CreateNotes
         fields = ('title', 'description')
+
 
