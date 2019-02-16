@@ -1,3 +1,4 @@
+import json
 import jwt
 from rest_framework.filters import OrderingFilter
 from django.shortcuts import render
@@ -86,7 +87,7 @@ def signup(request):
             to_email = form.cleaned_data.get('email')
             email = EmailMessage(mail_subject, message, to=[to_email])
             email.send()
-            return HttpResponse('Please confirm your email address to complete the registration')
+            return Response('Please confirm your email address to complete the registration')
 
     else:
         form = SignupForm()
@@ -120,6 +121,57 @@ from django.contrib.auth import authenticate, login
 
 from django.urls import reverse
 
+#
+from django.http import JsonResponse
+# def logins(request):
+#     print('******************************* **loginsssss***************************')
+#     print()
+#     try:
+#         if request.method == "POST":  # if method as post
+#             email = request.POST.get('email')  # Get Email
+#             password = request.POST.get('password')  # Get Password
+#             user = authenticate(email=email, password=password)
+#             # user = User.object.get(email=email, password=password)
+#
+#             if user:  # If it is a User
+#                 if user.is_active:  # If a User is active
+#                     login(request, user)  # Login maintains a request and a user
+#                     try:  # The claims in a JWT are encoded as a JSON object that is digitally signed using
+#                         # JSON Web Signature (JWS) and/or encrypted using JSON Web Encryption (JWE)
+#                         payload = {
+#                             'email': email,
+#                             'password': password,
+#                         }
+#
+#                         global token
+#                         token = jwt.encode(payload, 'SECRET')  # Encodes the token with the secret key and encodes, and
+#                         # cache.set(token, timeout=CACHE_TTL)
+#                         #return Response(token, status=status.HTTP_201_CREATED)
+#
+#
+#                         # return HttpResponse(token,{})
+#                         return render(request, 'profile.html',
+#                                       {'token': token})  # After Sucessfull returns to the profile page
+#
+#                         # return HttpResponse(token)
+#                     except Exception as e:  # Invalid
+#                         result = {'error1': 'please provide an valid email and a password'}
+#                         return HttpResponse(result)
+#                 else:
+#                     return HttpResponse('User is Inactive')
+#                     # # res = {'error': 'can not authenticate with the given credentials or the account has been deactivated'}
+#                     # return HttpResponse("User Not Found", status=status.HTTP_403_FORBIDDEN)
+#             else:
+#                 message = "Invalid Login"
+#                 messages.error(request, 'Please Enter the correct login details')
+#                 return render(request, 'user_login.html')
+#     except Exception as e:
+#         res = {'error': 'please provide an valid email and a password'}
+#         return HttpResponse(res)
+
+
+
+
 
 def logins(request):
     print('******************************* **loginsssss***************************')
@@ -142,63 +194,114 @@ def logins(request):
                         }
 
                         global token
-                        token = jwt.encode(payload, 'SECRET')  # Encodes the token with the secret key and encodes, and
+                        token = jwt.encode(payload, "secret_key", algorithm='HS256').decode('utf-8')
+
+                        jwt_token = {
+                            'token': token
+                        }
+
+                        json_data = {
+                            "success": True,
+                            'email': email,
+                            'password': password,
+                            'token': token,
+                            "message": "successful login"
+                        }
+                        dump = json.dumps(json_data)
+
+                        return HttpResponse(dump, content_type="application/json") # Response for returning a json data
+
                         # cache.set(token, timeout=CACHE_TTL)
-                        # return Response(token, status=status.HTTP_201_CREATED)
+                        #return Response(token, status=status.HTTP_201_CREATED)
+
 
                         # return HttpResponse(token,{})
-                        return render(request, 'profile.html',
-                                      {'token': token})  # After Sucessfull returns to the profile page
+                        # return HttpResponse(request, 'profile.html',
+                        #               {'token': token})  # After Sucessfull returns to the profile page
 
                         # return HttpResponse(token)
                     except Exception as e:  # Invalid
-                        result = {'error': 'please provide an valid email and a password'}
+                        result = {'error1': 'please provide an valid email and a password'}
                         return HttpResponse(result)
                 else:
                     return HttpResponse('User is Inactive')
                     # # res = {'error': 'can not authenticate with the given credentials or the account has been deactivated'}
                     # return HttpResponse("User Not Found", status=status.HTTP_403_FORBIDDEN)
             else:
-                message = "Invalid Login"
-                messages.error(request, 'Please Enter the correct login details')
-                return render(request, 'user_login.html')
+                # message = "Invalid Login"
+                # messages.error(request, 'Please Enter the correct login details')
+                # return render(request, 'user_login.html')
+                print("else part")
+                json_data = {
+
+                    "success": False,
+                    "message": "Unsuccessful login"
+                }
+                return JsonResponse(json_data)
+
+
+
     except Exception as e:
         res = {'error': 'please provide an valid email and a password'}
         return HttpResponse(res)
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # @cache_page(CACHE_TTL)
-def recipes_view(request):
-    tokens = token
-    return render(request, 'receive.html', {tokens: tokens})
 
 
-# @api_view(['GET'])
-# def login_token(request):
-#     if request.method == "POST":  # if method as post
-#         email = request.POST.get('email')  # Get Email
-#         password = request.POST.get('password')  # Get Password
-#         user = authenticate(email=email, password=password)
-#         # user = User.object.get(email=email, password=password)
+
+
 #
-#         if user:  # If it is a User
-#             if user.is_active:  # If a User is active
-#                 login(request, user)  # Login maintains a request and a user
-#                 try:  # The claims in a JWT are encoded as a JSON object that is digitally signed using
-#                     # JSON Web Signature (JWS) and/or encrypted using JSON Web Encryption (JWE)
-#                     payload = {
-#                         'email': email,
-#                         'password': password,
-#                     }
-#
-#                     global token
-#                     token = jwt.encode(payload, 'SECRET')  #
-#                     print(token)
-# if 'token' in cache:
-#     tokens = cache.get('token')
-#     return Response(tokens, status=status.HTTP_201_CREATED)
-#
-# else:
+# def recipes_view(request):
+#     tokens = token
+#     return render(request, 'receive.html', {tokens: tokens})
+
 
 
 from django.contrib.auth import logout
@@ -234,14 +337,14 @@ def upload_profilenew(request):
             print('*******************', email)
 
             print('In Files')
-            key = email + '.jpeg' or email + '.png'
+            key = email + '.jpeg' or email + '.png'  # storing in a key
             print('this is key', key)
-            s3.upload_fileobj(file, 'fundoobucket', Key=key)
+            s3.upload_fileobj(file, 'fundoobucket', Key=key) # Upload in a s3 bucket
 
 
         except MultiValueDictKeyError:
-            messages.error(request, "Please select valid file")
-            return render(request, 'profile.html')
+            messages.error(request, "Please select valid file")  # if Not display the error
+            return render(request, 'profile.html')  # return
 
         return render(request, 'home.html')  # return Home Page
     else:
@@ -307,13 +410,43 @@ class deletenote(APIView):  # Delete a Note
         try:
             if pk is not None:
                 note = CreateNotes.objects.get(pk=pk)
-                # delete note
-                note.delete()
-                # return in response no content
-                return Response({"message": "Notes with id `{}` has been deleted.".format(pk)}, status=204)
+                if note.trash==False:
+                    note.trash=True
+                    note.save()
+                    return Response({"message": "Notes with id `{}` has been moved to Trash.".format(pk)}, status=204)
+
+                else:
+                    note.is_deleted=True
+                    note.delete()
+                # return in response no content and format(pk) displays the
+                return Response({"message": "Notes with id `{}` has been deleted from Trash.".format(pk)}, status=204)
 
         except Exception as e:
             return Response({"message": "Notes with id `{}` is not present.".format(pk)}, status=204)
+
+
+
+
+class restorenote(APIView):
+    def get_object(self, pk):
+        try:
+            return CreateNotes.objects.get(pk=pk)
+        except Event.DoesNotExist:
+            raise Http404
+
+    def post(self, request, pk):
+        try:
+            if pk is not None:
+                note = CreateNotes.objects.get(pk=pk)
+                if note.trash==True:
+                    note.trash=False
+                    note.save()
+                    return Response({"message": "Notes with id `{}` has been Restored.".format(pk)}, status=204)
+        except Exception as e:
+            return Response({"message": "Notes with id `{}` is not present.".format(pk)}, status=204)
+
+
+
 
 
 class updatenote(APIView):  # Update a Note
@@ -336,6 +469,99 @@ class updatenote(APIView):  # Update a Note
             # return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+class archivenote(APIView):  # Delete a Note
+    """
+    Retrieve, update or delete a event instance.
+    """
+
+    def get_object(self, pk):
+        try:
+            return CreateNotes.objects.get(pk=pk)
+        except Event.DoesNotExist:
+            raise Http404
+
+    def post(self, request, pk):
+        try:
+            if pk is not None:
+                note = CreateNotes.objects.get(pk=pk)
+                if note.is_archived==False:
+                    note.is_archived = True
+                    note.save()
+                    return Response({"message": "Notes with id `{}` has been moved to Archive.".format(pk)}, status=204)
+
+                else:
+                    note.is_archived = False
+                    note.save()
+                # return in response no content and format(pk) displays the
+                return Response({"message": "Notes with id `{}` has been Move to dashboard.".format(pk)}, status=204)
+
+        except Exception as e:
+            return Response({"message": "Notes with id `{}` is not present.".format(pk)}, status=204)
+
+
+
+
+
+class colornote(APIView):
+
+    def post(self,request):
+            color = request.POST.get('color')
+            id = request.POST.get('id')
+            note = CreateNotes.objects.get(id=id)
+            note.color = request.POST.get('color')
+            print(color)
+            print(id)
+            note.save()
+            return Response({"message": "Color is changed ".format(id)}, status=204)
+
+class ispinned(APIView):
+    def post(self,request):
+            id = request.POST.get('id')
+            note = CreateNotes.objects.get(id=id)
+            if note.is_pinned == False:
+                note.is_pinned = True
+                note.save()
+            else:
+                note.is_pinned = False
+                note.save()
+            return Response({"message": "Id is pinned "}, status=204)
+
+
+
+class copynote(APIView):
+    def get_object(self, pk):
+        try:
+            return CreateNotes.objects.get(pk=pk)
+        except Event.DoesNotExist:
+            raise Http404
+
+
+    def get(self,request, pk):
+        # get note with given id
+        note = CreateNotes.objects.get(pk=pk)
+        # set title of requested id to new note
+        title = note.title
+        # set description of requested id to new note
+        description = note.description
+        # create ojbect of new copy
+        newcopy = CreateNotes(title=title, description=description)
+        # save newcopy to database
+        newcopy.save()
+        return Response({"message": "Note is Coped "}, status=204)
+
+
+def showarchive(request):  # Archive Show
+    notes = CreateNotes.objects.all().order_by('-created_time')  # Sort the Notes according to the time
+    return render(request, 'notes/index1.html', {'notes': notes})
+
+
+def trash(request):
+    notes = CreateNotes.objects.all().order_by('-created_time')
+    return render(request, 'notes/trash.html', {'notes': notes})
+
+
+
 def table(request):     # Display the contents of the tables using a Jinga Template
     notes = CreateNotes.objects.all().order_by('-created_time') # Sort the Notes according to the time
     return render(request, 'notes/index.html', {'notes': notes})
@@ -351,12 +577,10 @@ class PostListAPIView(generics.ListAPIView):  # Viweing the ListAPI Views that
     pagination_class = PostPageNumberPagination  # Create our own limit of records in a pages
 
     def get_queryset(self, *args, **kwargs):  # Method for a itrerating of pages
-        query_list = CreateNotes.objects.filter()  # Filter down a queryset based on a model's
+        query_list = CreateNotes.objects.filter().order_by('-created_time')  # Filter down a queryset based on a model's
         # fields, displaying the form to let them do this.
 
         return query_list
-
-
 
 
 def pratice(request):
@@ -364,3 +588,5 @@ def pratice(request):
     a = 10, 20
     d = [1, 2, 3, 4, 5, 6, 'Hello', 'Shahazad']
     return render(request, 'notes/pratice.html', {'d': d}, {'a', a})
+
+

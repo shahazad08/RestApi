@@ -15,13 +15,13 @@ urlpatterns = [
     path('', TemplateView.as_view(template_name='home.html'), name='home'), # for a home page
     url(r'^$', views.signup),
     url(r'^signup/$', views.signup, name='signup'),
-
     url(r'^activate/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,20})/$', views.activate,
         name='activate'),
 
 
     url(r'^log_me/$', views.log_me, name='log_me'),
     path('log_user/', views.logins, name='log_user'),
+
 #    path('upload_profile/',views.upload_profile,name='upload_profile'),
 
     path('fileupload/',views.fileupload, name='fileupload'),
@@ -38,18 +38,31 @@ urlpatterns = [
 
     path('logout/',views.exit,name='logout'),
 
-    path('createnote/', views.createnote.as_view(), name='createnote'),
-    path('readnote/<int:pk>/',views.readnote.as_view(), name='readnote'),
-    path('deletenote/<int:pk>/',views.deletenote.as_view(), name='deletenote'),
-    path('updatenote/<int:pk>/',views.updatenote.as_view(),name='updatenote'),
+    #*****************************Notes Urls********************************************
 
-    path('table/', views.table, name='table'),
+
+    path('createnote/', views.createnote.as_view(), name='createnote'),      # For Create
+    path('readnote/<int:pk>/',views.readnote.as_view(), name='readnote'),    # Read
+    path('deletenote/<int:pk>/',views.deletenote.as_view(), name='deletenote'),  # Delete with PK
+    path('updatenote/<int:pk>/',views.updatenote.as_view(),name='updatenote'),   # Update with Pk
+    path('archivenote/<int:pk>/', views.archivenote.as_view(), name='archivenote'),  # Update with Pk
+
+    path('restorenote/<int:pk>/', views.restorenote.as_view(), name='restorenote'),  # Update with Pk
+    path('colornote/', views.colornote.as_view(), name='colornote'),  # Update with Pk
+    path('ispinned/', views.ispinned.as_view(), name='ispinned'),  # Update with Pk
+    path('copynote/<int:pk>/', views.copynote.as_view(), name='copynote'),  # Update with Pk
+
+
+    path('table/', views.table, name='table'),  # Displays the Table data in a front view using jinga template
+
+    path('showarchive/', views.showarchive, name='showarchive'),  # Displays the Table data in a front view using jinga template
+    path('trash/', views.trash, name='trash'),  # Displays the Table data in a front view using jinga template
 
     path('pratice/', views.pratice,name='pratice'),
 
-    path('page/', views.PostListAPIView.as_view(), name='page'),
+    path('page/', views.PostListAPIView.as_view(), name='page'),    # Paginate
 
-    path('token/',views. recipes_view,name='token'),
+    # path('token/',views. recipes_view,name='token'),
 
 ]
 
