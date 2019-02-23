@@ -1,6 +1,6 @@
 from rest_framework.validators import UniqueValidator
 
-from .models import User, CreateNotes
+from .models import User, CreateNotes,Labels
 from rest_framework import serializers  # Serializers allow complex data such as query sets and model instances to be
 # from rest_framework.pagination import PaginationSerializer
 from django.core.paginator import Paginator
@@ -61,12 +61,12 @@ class NoteSerializer(serializers.ModelSerializer):
     title= serializers.RegexField(regex=r"^[a-zA-Z0-9.' ']+$",required=True) # Title can be a indicates number,name,spaces
     # color= serializers.RegexField(regex=r"^[a-zA-Z,' ']+$",required=True) # colors can indicates more than 1 and it is seperated by ,
     color=serializers.RegexField(regex=r"^[-\w\s]+[-\w\s]+(?:,[-\w\s]*)*$",required=True)
-    label=serializers.CharField()
+    # description=serializers.CharField()
 
     class Meta:
         model = CreateNotes
         # fields = '__all__'
-        fields = ('title', 'description', 'color', 'label','is_pinned')
+        fields = ('title', 'description', 'color','label')
 
 
 class ReadNoteSerializer(serializers.ModelSerializer):
@@ -84,3 +84,15 @@ class PageNoteSerializer(serializers.ModelSerializer):
         fields = ('title', 'description')
 
 
+
+class LabelSerializer(serializers.ModelSerializer):
+
+    label_name= serializers.RegexField(regex=r"^[a-zA-Z0-9.' ']+$",required=True) # Title can be a indicates number,name,spaces
+    # color= serializers.RegexField(regex=r"^[a-zA-Z,' ']+$",required=True) # colors can indicates more than 1 and it is seperated by ,
+    # color=serializers.RegexField(regex=r"^[-\w\s]+[-\w\s]+(?:,[-\w\s]*)*$",required=True)
+    # description=serializers.CharField()
+
+    class Meta:
+        model = Labels
+        # fields = '__all__'
+        fields = '__all__'

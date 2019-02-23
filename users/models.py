@@ -90,3 +90,23 @@ class CreateNotes(models.Model):
 
     def __str__(self):
         return self.title
+
+
+
+class Labels(models.Model):
+    label_name = models.CharField(max_length=150)
+    created_time = models.DateTimeField(auto_now_add=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+
+
+    def __str__(self):
+        return self.label_name
+
+
+class MapLabel(models.Model):
+    note_id = models.ForeignKey(CreateNotes, on_delete=models.CASCADE,null=True, blank=True,db_constraint=False)
+    label_id = models.ForeignKey(Labels, on_delete=models.CASCADE,null=True, blank=True,db_constraint=False)
+    created_time = models.DateTimeField(auto_now_add=True, null=True)
+
+    def __str__(self):
+        return str(self.note_id)
