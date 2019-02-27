@@ -23,7 +23,7 @@ class UserSerializer(serializers.ModelSerializer):  # Created the User Serialize
     email = serializers.RegexField(regex=r"^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$",
                                    required=True)
 
-    class Meta(object):  # We have  use of Meta class is simply to provide metadata to the ModelForm class.
+    class Meta:  # We have  use of Meta class is simply to provide metadata to the ModelForm class.
         model = User  # Shows that the User fields contain the model class
         fields = ('id', 'email', 'first_name', 'last_name', 'date_joined', 'password')
 
@@ -39,27 +39,17 @@ class LoginSerializer(serializers.ModelSerializer):  # Created the user serializ
         fields = ['email', 'password']
 
 
+
+
+
 # ***********************************************************************************
 
-
-#
-# class registrationSerializer(serializers.ModelSerializer):
-#     username = serializers.CharField(max_length=20)
-#     password = serializers.CharField(style={'input_type': 'password'})
-#     # confirm_password=serializers.CharField(style={'input_type':'password'})
-#     email = serializers.RegexField(regex=r'^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$',
-#                                    required=True)
-#
-#     class Meta:
-#         model = User  # Database Model to  store the data in .
-#         fields = ('username', 'password', 'email')
-#
-#
 
 
 class NoteSerializer(serializers.ModelSerializer):
     title= serializers.RegexField(regex=r"^[a-zA-Z0-9.' ']+$",required=True) # Title can be a indicates number,name,spaces
-    # color= serializers.RegexField(regex=r"^[a-zA-Z,' ']+$",required=True) # colors can indicates more than 1 and it is seperated by ,
+    # color= serializers.RegexField(regex=r"^[a-zA-Z,' ']+$",required=True) # colors can indicates more than 1 and it
+    # is seperated by ,
     color=serializers.RegexField(regex=r"^[-\w\s]+[-\w\s]+(?:,[-\w\s]*)*$",required=True)
     # description=serializers.CharField()
 

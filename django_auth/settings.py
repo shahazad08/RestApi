@@ -32,7 +32,7 @@ EMAIL_USE_TLS = True
 
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_HOST_USER = 'sk.shahazad@gmail.com'
-EMAIL_HOST_PASSWORD = '@zim2891'
+EMAIL_HOST_PASSWORD = 'meranaamjoker2891'
 EMAIL_PORT = 587
 ACCOUNT_EMAIL_VERIFICATION = 'none'
 
@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_filters'
 ]
 
 MIDDLEWARE = [

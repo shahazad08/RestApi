@@ -10,4 +10,4 @@ class PostLimitOffsetPagination(LimitOffsetPagination):  # Default Limit
 
 
 class PostPageNumberPagination(PageNumberPagination):  # No. of contents that is to be display in a page_size
-    page_size = 7
+    page_size = 20
