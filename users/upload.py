@@ -14,7 +14,6 @@ def upload_profilenew(request):
         key = email + '.jpeg' or email + '.png'  # storing in a key
 
 
-
         profilePath = s3.upload_fileobj(file, 'fundoobucket', Key=key) # Upload in a s3 bucket
         return profilePath
 
