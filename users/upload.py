@@ -2,29 +2,41 @@ import boto3
 from django.utils.datastructures import MultiValueDictKeyError
 from django.http import HttpResponse
 from django.views.decorators.http import require_POST
-s3 = boto3.client('s3')
+from django.http import JsonResponse
+from . import services
+import imghdr   # Determine the type of an image
+
+
+# Using to write software that makes use of Amazon services like S3 and EC2.
 @require_POST
-
 def upload_profilenew(request):
-      # Using to write software that makes use of Amazon services like S3 and EC2.
-
+    res = {}
     try:
-        file = request.FILES['pic']  # Uploading a Pic
-        email = request.POST.get('email')
-        key = email + '.jpeg' or email + '.png'  # storing in a key
-
-
-        profilePath = s3.upload_fileobj(file, 'fundoobucket', Key=key) # Upload in a s3 bucket
-        return profilePath
-
+        if request.FILES['pic']:
+            file = request.FILES['pic']  # Uploading a Pic
+            print("Name of a File",file)
+            tag = request.POST.get('email')
+            valid_image=imghdr.what(file)
+            print("Image Extension",valid_image)
+            if valid_image:
+                key = tag + '.jpeg'
+                services.s3.upload_fileobj(file, 'fundoobucket', Key=key)
+                res['message'] = "Sucessfully Uploaded the Image"
+                res['Sucess'] = True
+                return JsonResponse(res, status=200)
+            else:
+                res['message'] = "Invalid File Uploaded"
+                res['Sucess'] = False
+                return JsonResponse(res, status=404)
+        else:
+            res['message'] = "Please select a valid file"
+            res['Sucess'] = False
+            return JsonResponse(res, status=404)
     except MultiValueDictKeyError:
-        messages.error(request, "Please select valid file")  # if Not display the error
-        return HttpResponse(request, 'profile.html')  # return
+        res['message'] = "Select a Valid File"
+        res['Sucess'] = False
+        return JsonResponse(res,status=404)
+
     except Exception as e:
         print(e)
         return json()
-        #return render(request, 'home.html')  # return Home Page
-    # else:
-    #     # return HttpResponse("Not a Valid")  # Get
-    #     # messages.error(request, "Please select valid file")  # if Not display the error
-    #     return render(request, 'profile.html')

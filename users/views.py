@@ -6,14 +6,12 @@ from django.shortcuts import render
 from django.template import loader
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import JsonResponse
-# from decorators import apiview
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.urls import resolve
 from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import EmailMessage
 from django.shortcuts import get_object_or_404, redirect
-# from usersexample.models import Profile
 from django.template.loader import render_to_string
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.encoding import force_bytes, force_text
@@ -24,7 +22,6 @@ from django.http import JsonResponse
 from .serializers import UserSerializer, LoginSerializer, LabelSerializer
 from rest_framework.renderers import TemplateHTMLRenderer
 from .models import User
-# from rest_framework.request import Request
 from django.http import HttpResponse
 from django.shortcuts import render
 from rest_framework import serializers, status
@@ -33,47 +30,30 @@ from rest_framework.response import Response
 from rest_framework.validators import UniqueValidator
 from rest_framework.views import APIView  # Taking the views of REST framework Request & Response
 from django.contrib.auth import logout
-# from .serializers import NoteSerializer,ReadNoteSerializer
-
-# import django_auth.users.serializers
 from .tokens import account_activation_token
 from django.urls import reverse
-
-# from django_auth.users.tokens import account_activation_token
-# from django_auth.users.tokens import account_activation_token
 from .forms import SignupForm
-
 from .serializers import NoteSerializer, ReadNoteSerializer, PageNoteSerializer
-
 from rest_framework.decorators import api_view
 from .models import User, CreateNotes, Labels, MapLabel
-from django.core.cache import cache
 from django.conf import settings
 from .upload import upload_profilenew
-
 from rest_framework import generics  # For a List API use a generics
 from .paginate import PostLimitOffsetPagination, PostPageNumberPagination  # Creating our own no. of records in a Pages
 from rest_framework.filters import SearchFilter  # it allows users to filter down a queryset based on a model's
-# fields, displaying the form to let them do this.
-
 from django.contrib.auth import authenticate, login
-
 from django.urls import reverse
-
 from django.core.cache.backends.base import DEFAULT_TIMEOUT  # Setting a time for a cache to store
-
-# from django.core.paginator import Paginator
-
-CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
-
-
-token_encode=0
-# from .serializers import UserSerializer, LoginSerializer
-
+from django.views.decorators.csrf import csrf_exempt
+from django.middleware.csrf import get_token
+from .custom_decorators import custom_login_required
+from django.utils.decorators import method_decorator
 
 def home(request):
     return render(request, "home.html", {})  # home page
 
+def log_me(request):
+    return render(request, 'user_login.html', {})
 
 def signup(request):
     if request.method == 'POST':  # IF method id POST
@@ -94,18 +74,12 @@ def signup(request):
             to_email = form.cleaned_data.get('email')
             email = EmailMessage(mail_subject, message, to=[to_email])
             email.send()
-            return Response('Please confirm your email address to complete the registration')
-
+            return JsonResponse('Please confirm your email address to complete the registration',safe=False)
     else:
         form = SignupForm()
-
     return render(request, 'signup.html', {'form': form})
 
-
-
-
-
-class RegisterRapi(CreateAPIView):
+class Registerapi(CreateAPIView):
     serializer_class = UserSerializer
 
     def post(self, request, *args, **kwargs):
@@ -118,23 +92,19 @@ class RegisterRapi(CreateAPIView):
         first_name = request.data['first_name']
         last_name = request.data['last_name']
         # date_joined=request.data['date_joined']
-        password=request.data['password']
-
-
+        password = request.data['password']
 
         if email and password is not "":
-            user= User.object.create_user(email=email,first_name=first_name,last_name=last_name,password=password)
-            print("******",email)
+            user = User.object.create_user(email=email, first_name=first_name, last_name=last_name, password=password)
+            print("******", email)
             user.is_active = True
             user.save()
             current_site = get_current_site(request)
-
             message = render_to_string('activate.html', {
                 'user': user,
                 'domain': current_site.domain,
                 'uid': urlsafe_base64_encode(force_bytes(user.pk)).decode(),
                 'token': account_activation_token.make_token(user),
-
             })
             mail_subject = 'Activate your account...'
             to_email = email
@@ -142,11 +112,9 @@ class RegisterRapi(CreateAPIView):
             send_email.send()
             res['message'] = "registered Successfully...Please activate your Account"
             res['success'] = True
-            return Response(res)
+            return JsonResponse(res)
         else:
-            return Response(res)
-
-
+            return JsonResponse(res)
 
 def activate(request, uidb64, token):
     try:
@@ -157,33 +125,18 @@ def activate(request, uidb64, token):
     if user is not None and account_activation_token.check_token(user, token):  # if its a valid token
         user.is_active = True  # User is Active
         user.save()
-        # login(request, user)
-        # return redirect('home')
         return render(request, 'user_login.html')
-        # return HttpResponse('Thank you for your email confirmation. Now you can login your account.')
-        # return render(request, 'login.html', {'form': form})
     else:
         return HttpResponse('Activation link is invalid!')
 
-
-def log_me(request):
-    return render(request, 'user_login.html', {})
-
-
-from django.views.decorators.csrf import csrf_exempt
-
-
-#
 @api_view(['POST'])
-@csrf_exempt
-# @require_POST
 @require_POST
 def logins(request):
     res = {}
     res['message'] = 'Something bad happend'
     res['success'] = False
 
-    print('******************************* **loginsssss***************************')
+    print('**********************************loginsssss***************************')
     try:
         email = request.POST.get('email')  # Get Email
         password = request.POST.get('password')  # Get Password
@@ -192,50 +145,15 @@ def logins(request):
         if password is None:
             raise Exception("Password is required")
         user = authenticate(email=email, password=password)
-        print("User Name",user)
-        # user = User.object.get(email=email, password=password)
-
+        print("User Name", user)
         if user:  # If it is a User
             if user.is_active:  # If a User is active
                 login(request, user)  # Login maintains a request and a user
-                # user_id = request.user
-                #print(user_id)
-                try:  # The claims in a JWT are encoded as a JSON object that is digitally signed using
-                    # JSON Web Signature (JWS) and/or encrypted using JSON Web Encryption (JWE)
-                    payload = {
-                        # 'id': User.id,
-                        'email': email,
-                        'password': password,
-                    }
-
-                    token_encode = jwt.encode(payload, "secret_key", algorithm='HS256').decode('utf-8')
-                    # token_decode = jwt.decode(token_encode, 'secret', algorithms=['HS256'])
-                    # print("sdfdsf", token_decode)
-
-                    # authenticate_header='token'
-                    #
-                    # jwt_token = {
-                    #     'token': token
-                    # }
-                    res['message'] = "Login Sucessfull"
-                    res['success'] = True
-                    res['data'] = token_encode
-
-                    return Response(res, status=status.HTTP_201_CREATED)
-                    # return HttpResponse(request, 'profile.html',{'token': token})  # After Sucessfull returns to the profile page
-                    #
-
-                    # cache.set(token, timeout=CACHE_TTL)
-                    # return Response(token, status=status.HTTP_201_CREATED)
-
-                    # return HttpResponse(token,{})
-                    # return render(request, 'profile.html',
-                    #                      {'token': token})  # After Sucessfull returns to the profile page
-
-                    # return HttpResponse(token)
+                try:
+                    return render(request, 'profile.html')  # After Sucessfull returns to the profile page
                 except Exception as e:  # Invalid
                     result = {'error1': 'please provide an valid email and a password'}
-                    return HttpResponse(result)
+                    return JsonResponse(result)
             else:
                 res['message'] = "User is Inactive"
                 return JsonResponse(res)
@@ -243,571 +161,322 @@ def logins(request):
             res['message'] = 'Username or Password is not correct'  # Invalid login details
             messages.error(request, 'Invalid login details')
             return JsonResponse(res)
-
     except Exception as e:
         print(e)
 
-#
-# def authorize(f):
-#     @wraps(f)
-#     def decorated_function(*args, **kws):
-#             if not 'Authorization' in request.headers:
-#                raise 404
-#
-#             user = None
-#             data = request.headers['Authorization'].encode('ascii','ignore')
-#             token = str.replace(str(data), 'Bearer ','')
-#             try:
-#                 user = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])['sub']
-#             except:
-#                 raise 404
-#
-#             return f(user, *args, **kws)
-#     return decorated_function
-#
-
-
-
-def user_decorator(func):
-    def wrapper_func(request, *args, **kwargs):
-        res={}
-        # print(x)
-        try:
-            email = request.POST.get('email')  # Get Email
-            print(email)
-            password = request.POST.get('password')  # Get Password
-            print("dd", password)
-            users = authenticate(email=email, password=password)
-            print("user_Names", users)
-            if users:
-                ids = User.object.get(email=users)
-                a = ids.id
-                # print("This is my id", a)
-                return func(a)
-                # return wrapper_func
-
-            else:
-                res['message'] = "User DNot Exist"
-                res['success'] = False
-                return Response(res, status=404)
-                # return res
-
-
-        except Exception as e:
-            res['message']="User Not Exist"
-            res['success'] = False
-            # return JsonResponse(res, status=404)
-    return wrapper_func
-
-
-
-
-
-
-def decorator(request, *args, **kwargs):
-    if request.method=='POST':
-        # note=User.Object.get(email)
-
-        email = request.POST.get('email')  # Get Email
-        print(email)
-        password = request.POST.get('password')  # Get Password
-        print("dd",password)
-
-        users = authenticate(email=email, password=password)
-        print("user_Name", users)
-
-        ids=User.object.get(email=users)
-
-
-
-        # ids = User.object.get(id=email)
-        #print("id", ids.id)
-        # print ("userId", )
-
-        a = ids.id
-        print("This is my id",a)
-
-
-# def my_decorator(func):
-#     def decorator(request, *args, **kwargs):
-#         res={}
-#         # token_decode
-#         token = request.META.get('HTTP_AUTHORIZATION') # accept the token from a header
-#         token_split = token.split(' ') # split token with bearer name
-#         token_get = token_split[1] # token output
-#         print("My Token:", token_get)
-#         try:
-#             if token: # if token present
-#                 token_decode = jwt.decode(token_get, "secret_key", algorithms=['HS256']) # decode the token
-#                 eid = token_decode.get('email') # for getting id of a user, we are getting from email
-#                 user_id = User.object.get(email=eid) # accept a user id
-#                 print (user_id.id) # get user id
-#             else:
-#                 res['message']="Invalid Token" # Else Invalid token
-#                 res['sucess']='False' # False
-#                 return JsonResponse(res,status=404)
-#
-#         except Exception as e:  # Unauthorized
-#             res['message'] = "Unauthorized Access"
-#             res['sucess'] = 'False'
-#     return decorator
-
-
-#
-# def authorize(request):
-#     # token=request.POST('')
-#     print(request.META.get('HTTP_AUTHORIZATION'))
-#     token=request.META.get('HTTP_AUTHORIZATION')
-#
-#
-#     # print(token)
-#     return HttpResponse(token)
-
-
-
-
+#/********************************Authorization Header*********************************************************
 def authorize(request):
     print(request.META.get('HTTP_AUTHORIZATION'))
     token = request.META.get('HTTP_AUTHORIZATION')
-    token_split=token.split(' ')
-    token_get=token_split[1]
-    print("My Token:",token_get)
+    token_split = token.split(' ')
+    token_get = token_split[1]
+    print("My Token:", token_get)
 
     token_decode = jwt.decode(token_get, "secret_key", algorithms=['HS256'])
-    eid=token_decode.get('email')
-    user_id =User.object.get(email=eid)
+    eid = token_decode.get('email')
+    user_id = User.object.get(email=eid)
     print("Email", eid)
-    print ("User id",user_id.id)
-
-
-
-
+    print ("User id", user_id.id)
     print(token_decode)
-    # uid = token_decode['id']
-    # print(uid)
+    return user_id.id
 
-    return HttpResponse(token_decode)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    #logins(request)
-    #authorize()
-    #for i in request.META:
-     #   print(i)
-    #print (request.META['HTTP_ACCEPT'])
-
-
-
-
-
-
-    # def wrapper_function(*args,**kwargs):
-    #     global token_decode
-    #     token_decode=jwt.decode(token_encode,'secret',algorithms=['HS256'])
-    #     print(token_decode)
-        # return original_function()
-    # return wrapper_function()
-
-
-
-
-
-
-
-
-
-
-
-
-
-#         # res = {'error': 'please provide an valid email and a password'}
-#         # return HttpResponse(res)
-#
-#
-#
-
-
-# @cache_page(CACHE_TTL)
-
-
-#
-# def recipes_view(request):
-#     tokens = token
-#     return render(request, 'receive.html', {tokens: tokens})
-
-
+#/***********************************************************************************************
 def exit(request):  # For a Logout
     # logout(request)
     return render(request, "home.html")
 
-
-def fileupload(request):  # Upload a image
-    return render(request, 'file_upload.html', {})
-
-
-def upload(request):  # Displays the uploaded Image i,e Profile Dashboard
-    return render(request, 'profile.html', {})
-
-
 def upload1(request):
-    # file = request.FILES['pic']  # Uploading a Pic
-    # email = request.POST.get('email')
     upload_profilenew(file, name)
 
+@custom_login_required
+def createnotes(request):
+    res={}
+    print('ss', request.META.get('HTTP_AUTHORIZATION'))
+    token = request.META.get('HTTP_AUTHORIZATION')
+    token_split = token.split(' ')
+    token_get = token_split[1]
+    token_decode = jwt.decode(token_get, "secret_key", algorithms=['HS256'])
+    eid = token_decode.get('email')
+    user_id = User.object.get(email=eid)
+    a=user_id.id
+    print("User",a)
+    try:
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        color = request.POST.get('color')
+        label = request.POST.get('label')
+        notes = CreateNotes(title=title, description=description, color=color, label=label, user_id=a)
+        print('***Notes****', notes)
+        if title != "" and description != "":
+            notes.save()
+            res['message'] = 'Notes are added in a database'
+            res['success'] = True
+            res['data']=notes.id
+            return JsonResponse(res, status=200)
+        else:
+            res['message'] = 'Unssucess'
+            res['success'] = False
+            return JsonResponse(res, status=204)
 
-# /***********************************Template for a RestAPI ******************************************************
-
-#
-# class CreateUserAPIView(CreateAPIView):
-#     serializer_class = CreateNoteSerializer
-#     queryset = Notes.objects.all()
-
-#
-# class UserCreateAPI(CreateAPIView):             # Registration using Rest framework Using User Model.
-#
-#     serializer_class=registrationSerializer
-#     queryset = User.object.all()
-
-
-# /**********************************Notes****************************************************************
-
-
-from django.middleware.csrf import get_token
-#
-# head = {'token': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImthZGFtc2FnYXIwMzlAZ21haWwuY29tIiwicGFzc3dvcmQiOiJzaGFoYXphZDEyMyJ9.5NA3SACqykGEGl6pWbbPAq6kOxVAr35rk0ygkgaAq30'}
-# response = requests.get(url, headers=head)
-
-#
-# def get_token1(request):
-#     global HEADERS = {'Authorization': 'token {}'.format(token)}
-
-
-
-# global r =requests.get('<MY_URI>', headers={'Authorization': 'TOK:<token>'})
-
-# class createnote(APIView):
-#     # @auth_validate()
-#     # @authorize
-#     def post(self, request, format=None):
-#         res = {}
-#         # res['data'] = serializer.data
-#         res['message'] = 'Something added'
-#         res['success'] = True
-#         try:
-#             # notes=CreateNotes.objects.all()
-#             serializer = NoteSerializer(data=request.data)
-#             print(serializer)
-#             # check serialized data is valid or not
-#
-#
-#             if serializer.is_valid():
-#                 # if valid then save it
-#                 serializer.save()
-#                 res['data'] = serializer.data
-#                 res['message'] = 'Notes are added in a database'
-#                 res['success'] = True
-#                 return Response(res, status=200)
-#
-#
-#             else:
-#                 res['message'] = 'Unssucess'
-#                 res['success'] = False
-#
-#                 # in response return data in json format
-#                 return Response(res, status=204)
-#
-#         except Exception as e:
-#             print(e)
+    except Exception as e:
+        res['message'] = 'Unssucess'
+        return JsonResponse(res, status=204)
 
 
-# @auth_validate()
-# @authorize
-
-
-class createnote(APIView):
-    # res={}
-
-    @user_decorator
-    def post(self,request,a):
-        # res={}
-        # token_get = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6ImthZGFtc2FnYXIwMzlAZ21haWwuY29tIiwicGFzc3dvcmQiOiJzaGFoYXphZDEyMyJ9.5NA3SACqykGEGl6pWbbPAq6kOxVAr35rk0ygkgaAq30"
-        # # token_split = token.split(' ')  # split token with bearer name
-        # # token_get = token_split[1]  # token output
-        # print("My Tokendksjfgh:", token_get)
-        # try:
-        #     if token_get:  # if token present
-        #         token_decode = jwt.decode(token_get, "secret_key", algorithms=['HS256'])  # decode the token
-        #         eid = token_decode.get('email')  # for getting id of a user, we are getting from email
-        #         user_id = User.object.get(email=eid)  # accept a user id
-        #         usr = user_id.id
-        #         print(usr)  # get user id
-        #     else:
-        #         res['message'] = "Invalid Token"  # Else Invalid token
-        #         res['sucess'] = 'False'  # False
-        #         # return JsonResponse(res, status=404)
-        #
-        # except Exception as e:  # Unauthorized
-        #     res['message'] = "Unauthorized Access"
-        #     res['sucess'] = 'False'
+class create(APIView):      # Create Note Using Serializer
+    serializer_class = NoteSerializer
+    ''' title=title,
+        description=description
+        '''
+    def post(self, request):
 
 
 
-
-        # res = {}
-        # # res['data'] = serializer.data
-        #
-        # email = request.POST.get('email')  # Get Email
-        # print(email)
-        # password = request.POST.get('password')  # Get Password
-        # print("dd", password)
-        #
-        # users = authenticate(email=email, password=password)
-        # print("user_Name", users)
-        #
-        # ids = User.object.get(email=users)
-        #
-        # # ids = User.object.get(id=email)
-        # # print("id", ids.id)
-        # # print ("userId", )
-        #
-        # a = ids.id
-        # print("This is my id", a)
-
-
-        # res['data'] = serializer.data
-        #**************************************************
-
-        # try:
-        #     email = request.POST.get('email')  # Get Email
-        #     print(email)
-        #     password = request.POST.get('password')  # Get Password
-        #     print("dd", password)
-        #     users = authenticate(email=email, password=password)
-        #     print("user_Names", users)
-        #     if users is not None:
-        #         ids = User.object.get(email=users)
-        #         a = ids.id
-        #         print("This is my id", a)
-        #     else:
-        #         res['message'] = "User DNot Exist"
-        #         res['success'] = False
-        #         return JsonResponse(res,status=404)
-        #
-        # except Exception as e:
-        #     res['message']="User Not Exist"
-        #     res['success'] = False
-        #     return JsonResponse(res, status=404)
 
         res = {}
+        res['message'] = 'Something added'
+        res['success'] = True
         try:
-            title = request.POST.get('title')
-            description = request.POST.get('description')
-            color = request.POST.get('color')
-            label = request.POST.get('label')
-            # user=CreateNotes.objects.save(user=user_id.id)
-
-
-            notes = CreateNotes(title=title, description=description, color=color, label=label,user_id=a)
-            print('dskjghfdshj', notes)
-
-            if title != "" and description != "":
-                notes.save()
-                # res['user']=notes.user
-                res['data'] = notes.id
+            serializer = NoteSerializer(data=request.data)
+            print(serializer)
+            if serializer.is_valid():
+                serializer.save()
+                res['data'] = serializer.data
                 res['message'] = 'Notes are added in a database'
                 res['success'] = True
                 return JsonResponse(res, status=200)
             else:
-                res['message'] = 'Unssucess'
+                res['message'] = 'Unssucesss'
                 res['success'] = False
-
-                # in response return data in json format
-                return HttpResponse(res, status=204)
-
+                return JsonResponse(res, status=204)
         except Exception as e:
-            res['message'] = 'Unssucess'
-            res['success'] = False
+            print(e)
 
-            # in response return data in json format
-            return JsonResponse(res, status=204)
+@custom_login_required
+def createcollaborator(request, pk):  # get the require pk
+    a_user = authorize(request)
+    res = {}
+    res['message'] = 'Bad Happend'
+    res['success'] = False
+    try:
+        if pk:
+            note = CreateNotes.objects.get(pk=pk)  # get the required id of a note
+            print('------------------------', note)
+            note_user = note.user.id  # Get the Note User ID
+            note_id=note.id
+            print("NI",note_id)
+            print("Note User ID", note_user)
+            collaborate = request.POST.get('collaborate')  # Accept a id of a new user
+            print(collaborate)
+            user = User.object.get(id=collaborate)  # get the details of a user through id
+            values = CreateNotes.collaborate.through.objects.filter(
+                user_id=a_user).values()  # display the users which are collaborated with the users
+            val=CreateNotes.collaborate.through.objects.filter(createnotes_id=note.id,user_id=user.id).values()
+            print("bl", val)
+            print('values', values)
 
-            # print(e)
+            if note_user == user.id: # If note user_id and collaborate user is same
+                res['message'] = 'Cannot Collaborate to the same User'
+                res['success'] = False
+                return JsonResponse(res, status=404)
+            elif CreateNotes.collaborate.through.objects.filter(user_id=user.id, createnotes_id=note.id): # Checking of a same user id and create note id for as if its exist user or not
+                res['message'] = 'User Allready Exists'
+                res['success'] = False
+                return JsonResponse(res,status=404)
+            else:
+                print("user", user.id)
+                note.collaborate.add(user)  # adds the user to the note
+                note.save()  # save the note
+                res['message'] = 'Success'
+                res['success'] = True
+                res['data'] = note.id
+                # print("sss", exist)
+                return JsonResponse(res, status=200)
+    except Exception as e:
+        print('User doent exists')
+        res['message'] = 'User doesnt exists'
+        print(e)
+        return JsonResponse(res, status=404)
+
+@custom_login_required
+def deletecollaborator(request,pk):
+    res = {}
+    res['message'] = 'User Not Exist'
+    res['success'] = False
+    try:
+        if pk:
+            note = CreateNotes.objects.get(pk=pk)  # get the required id of a note
+            print('------------------------', note)
+            auth_user = note.user.id # Use vairable b as a Note User
+            collaborate = request.POST.get('collaborate')  # Accept a id of a new user
+            print(collaborate)
+            user = User.object.get(id=collaborate)  # get the details of a user through id
+            if auth_user == user.id:
+                res['message'] = 'Cannot Collaborate to the same User'
+                res['success'] = False
+                return JsonResponse(res, status=400)
+            else:
+                res['message'] = 'Success'
+                res['success'] = True
+                res['data'] = note.id
+                note.collaborate.remove(user)  # adds the user to the note
+                note.save()
+                return JsonResponse(res, status=200)
+    except CreateNotes.DoesNotExist:  # if user not exists
+        print('User doent exists')
+        res['message'] = 'User doesnt exists'
+        return JsonResponse(res, status=404)
+
+@custom_login_required
+def checking_decorator(request):
+    return JsonResponse("Works")
+
+@custom_login_required
+def getnote(request):
+    res = {}
+    a_user = authorize(request)
+    try:
+        if a_user:
+            read_notes = CreateNotes.objects.filter(user=a_user).values()  # display the notes of a particular user
+            print("****", read_notes)
+            values = CreateNotes.collaborate.through.objects.filter(user_id=a_user).values()  # display the users which are collaborated with the users
+            print("Values", values)
+            collab = []  # blank collaborator array
+            for i in values:  # assigned the values in i which are collaborated with the  particular user
+                collab.append(i['createnotes_id'])  # append with respect to the note id
+            collab_notes = CreateNotes.objects.filter(id__in=collab).values().order_by('-created_time')  # id__in indicates to take all the values
+            print("collab Notes -------------", collab_notes)
+            merged = read_notes | collab_notes  # as to merging the 2 query sets into one
+            print("***", merged)
+            l = []  # Converting the query sets to a json format
+            for i in merged:
+                l.append(i)
+            return JsonResponse(l, safe=False)
+        else:
+            res['message'] = "Invalid User"
+            res['sucess'] = False
+            return JsonResponse(res, status=404)
+    except Exception as e:
+        res['message']="User Not Exist"
+        res['sucess']=False
+        return JsonResponse(res, status=404)
 
 
+@method_decorator(custom_login_required, name='dispatch')
 class readnote(APIView):  # Read a Note
-
     """
     Retrieve, update or delete a event instance.
     """
-
-    @user_decorator
     def get_object(self, pk):  # Get the data of a particular record through the primary key
         try:
             return CreateNotes.objects.get(pk=pk)  # IF the requested pk matches then return the pk of a record
         except Event.DoesNotExist:  # Raise Error, data not found
             raise Http404
 
-
     def get(self, request, pk):  # Used GET method to display the record
-
         res = {}
-        # try:
-        #     email = request.POST.get('email')  # Get Email
-        #     print(email)
-        #     password = request.POST.get('password')  # Get Password
-        #     print("dd", password)
-        #     users = authenticate(email=email, password=password)
-        #     print("user_Names", users)
-        #     if users is not None:
-        #         ids = User.object.get(email=users)
-        #         a = ids.id
-        #         print("This is my id", a)
-        #     else:
-        #         res['message'] = "User DNot Exist"
-        #         res['success'] = False
-        #         return JsonResponse(res, status=404)
-        #
-        # except Exception as e:
-        #     res['message'] = "User Not Exist"
-        #     res['success'] = False
-        #     return JsonResponse(res, status=404)
-        #
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         res['message'] = 'Something bad happend'
         res['success'] = False
-
         try:
-            if pk is not None:
+            if pk:
                 event = self.get_object(pk)  # Assign the pk(data) to the event
+                print(event)
                 serializer = ReadNoteSerializer(event)  # Using pk display the values in a serializer field
+                print(serializer)
                 res['message'] = 'Requested Data Display'
                 res['success'] = True
                 res['data'] = serializer.data
-                return Response(res, status=status.HTTP_201_CREATED)  # Display the data
-
+                return JsonResponse(res, status=status.HTTP_201_CREATED)  # Display the data
         except Exception as e:
             print('Note doent exists')
             res['message'] = 'Note doesnt exists'
             res['success'] = False
             return Response(res, status=404)
-
-            # return Response({"message": "Notes with id `{}` is not present.".format(pk)}, status=204)
 
 class deletenote(APIView):  # Delete a Note
     """
     Retrieve, update or delete a event instance.
     """
-
-    # def get_object(self, pk):
-    #     try:
-    #         return CreateNotes.objects.get(pk=pk)
-    #     except Event.DoesNotExist:
-    #         raise Http404
-
-    def delete(self, request, pk):
+    """
+    """
+    @method_decorator(custom_login_required)
+    def dispatch(self,request,*args, **kwargs):
+        print("dsf",request.user)
+        auth_user=request.user.id
+        print("Authentication User",auth_user)
         res = {}
         res['data'] = {}
         res['message'] = 'Something bad happened'
         res['success'] = False
         try:
-            if pk is not None:
-                note = CreateNotes.objects.get(pk=pk)  # get requested id from a Notes
-                if note.trash == False:  # if trash is false, change to true
-                    note.trash = True
-                    note.save()  # save in a db
-                    res['data'] = note.id
-                    res['message'] = 'Note has been moved to trash'
-                    res['success'] = True
-                    return Response(res, status=status.HTTP_201_CREATED)  # Display the data
-
-                    # return Response({"message": "Notes with id `{}` has been moved to Trash.".format(pk)}, status=204)
-
+            id=request.POST.get('id')
+            if id:
+                note = CreateNotes.objects.get(pk=id)  # get requested id from a Note
+                note_user=note.user.id
+                print("Note User", note_user)
+                if auth_user==note_user:
+                    if note.trash == False:  # if trash is false, change to true
+                        note.trash = True
+                        note.save()  # save in a db
+                        res['data'] = note.id
+                        res['message'] = 'Note has been moved to trash'
+                        res['success'] = True
+                        return JsonResponse(res, status=status.HTTP_201_CREATED)  # Display the data
+                    else:
+                        note.is_deleted = True  # if is_deleted is true
+                        note.delete()  # delete it
+                        res['data'] = note.id
+                        res['message'] = 'Note has been deleted from trash'
+                        res['success'] = True
+                        return JsonResponse(res, status=status.HTTP_201_CREATED)  # Display the data
                 else:
-                    note.is_deleted = True  # if is_deleted is true
-                    note.delete()  # delete it
-                    res['data'] = note.id
-                    res['message'] = 'Note has been deleted from trash'
-                    res['success'] = True
-                    return Response(res, status=status.HTTP_201_CREATED)  # Display the data
-
-                # return in response no content and format(pk) displays the
-                # return Response({"message": "Notes with id `{}` has been deleted from Trash.".format(pk)}, status=204)
+                    res['message'] = 'Invalid User'
+                    res['success'] = False
+                    return JsonResponse(res, status=status.HTTP_201_CREATED)
         except Exception as e:
             print('Note doent exists')
             res['message'] = 'Note doesnt exists'
             res['success'] = False
-            return Response(res, status=404)
-        # except Exception as e:
-        #     return Response({"message": "Notes with id `{}` is not present.".format(pk)}, status=204)
+            return JsonResponse(res, status=404)
 
 
 class restorenote(APIView):
-    def post(self, request, pk, format=None):
+    @method_decorator(custom_login_required)
+    def dispatch(self, request):
+        auth_user = request.user.id
+        print("Authentication User", auth_user)
         res = {}
         res['message'] = 'Something bad happened'
         res['success'] = False
         try:
-            if pk is not None:
-                note = CreateNotes.objects.get(pk=pk)
-                a = ReadNoteSerializer(data=request.data)
-                if note.trash == True:
-                    note.trash = False
-                    note.save()
-
-                res['message'] = "Selected Note has been Restored"
-                res['success'] = True
-                res['data'] = note.id
-                return Response(res, status=204)
-
-            else:
-                res['message'] = 'Unable to find Note. Missing Note ID'
-                return Response(res, status=200)
-
+            id = request.POST.get('id')
+            if id:
+                note = CreateNotes.objects.get(pk=id)
+                note_user = note.user.id
+                print("Note User", note_user)
+                if auth_user==note_user:
+                    if note.trash == True:
+                        note.trash = False
+                        note.save()
+                        res['message'] = "Selected Note has been Restored"
+                        res['success'] = True
+                        res['data'] = note.id
+                        return JsonResponse(res, status=204)
+                    else:
+                        res['message'] = 'Unable to find Note. Missing Note ID'
+                        return JsonResponse(res, status=200)
+                else:
+                    res['message'] = "Invalid User"
+                    res['success'] = False
+                    return JsonResponse(res, status=204)
         except CreateNotes.DoesNotExist:
             print('Note doent exists')
             res['message'] = 'Note doesnt exists'
-            return Response(res, status=404)
+            return JsonResponse(res, status=404)
 
-        except Exception as e:
-            print(e)
-            return Response(res, status=404)
-
-            # return Response({"message": "Notes with id `{}` has been Restored.".format(pk)}, status=204)
-        # except Exception as e:
-        #     res[]
-        #     return Response({"message": "Notes with id `{}` is not present.".format(pk)}, status=204)
 
 
 class updatenote(APIView):  # Update a Note
-
     def put(self, request, pk):  # get all the notes of given requested id(pk)
         res = {}
         res['message'] = 'Something bad happened'
@@ -826,22 +495,21 @@ class updatenote(APIView):  # Update a Note
                 res['success'] = True
                 return Response(res, status=status.HTTP_201_CREATED)
                 # in response return data in json format
-
             else:
                 res['message'] = 'Unssucess'  # Something wrong
                 res['success'] = False
-
                 # in response return data in json format
-                return Response(res, status=status.HTTP_201_CREATED)
+                return JsonResponse(res, status=status.HTTP_201_CREATED)
             # else return error msg in response
         except CreateNotes.DoesNotExist:
             print('Note doenst exists')
             res['message'] = 'Note doesnt exists'
-            return Response(res, status=404)
+            return JsonResponse(res, status=404)
 
         except Exception as e:
             print(e)
-            return Response(res, status=404)
+            return JsonResponse(res, status=404)
+
 
 
 class archivenote(APIView):  # Delete a Note
@@ -849,141 +517,51 @@ class archivenote(APIView):  # Delete a Note
     Retrieve, update or delete a event instance.
     """
 
-    # def get_object(self, pk):
-    #     try:
-    #         return CreateNotes.objects.get(pk=pk)
-    #     except Event.DoesNotExist:
-    #         raise Http404
-
-    def post(self, request, pk):
+    @method_decorator(custom_login_required)
+    def dispatch(self, request):
+        auth_user=request.user.id
         res = {}
         res['data'] = {}
         res['message'] = 'Something bad happened'
         res['success'] = False
         try:
-            if pk is not None:
-                note = CreateNotes.objects.get(pk=pk)  # get particular note from a id
-                if note.is_archived == False:  # if archived is false, change it to true, as to move in a archived
-                    note.is_archived = True
-                    note.save()  # save in a db
-                    # return Response({"message": "Notes with id `{}` has been moved to Archive.".format(pk)}, status=204)
-                    res['message'] = "Selected Note has been moved to Archive"
-                    res['success'] = True
-                    res['data'] = note.id
-
-                    return Response(res, status=204)  # return result
-
-
+            id=request.POST.get('id')
+            if id:
+                note = CreateNotes.objects.get(pk=id)  # get particular note from a id
+                note_user=note.user.id
+                if auth_user==note_user:
+                    if note.is_archived == False:  # if archived is false, change it to true, as to move in a archived
+                        note.is_archived = True
+                        note.save()  # save in a db
+                        res['message'] = "Selected Note has been moved to Archive"
+                        res['success'] = True
+                        res['data'] = note.id
+                        return JsonResponse(res, status=204)  # return result
+                    else:
+                        note.is_archived = False
+                        note.save()
+                        res['message'] = "Note has been moved to Dashboard"
+                        res['success'] = False
+                        res['data'] = note.id
+                        return JsonResponse(res, status=204)
                 else:
-                    note.is_archived = False
-                    note.save()
-                # return in response no content and format(pk) displays the
-                # return Response({"message": "Notes with id `{}` has been Move to dashboard.".format(pk)}, status=204)
-                res['message'] = "Note has been moved to Dashboard"
-                res['success'] = False
-                res['data'] = note.id
-                return Response(res, status=204)
+                    res['message'] = "Invalid User"
+                    res['success'] = False
+                    return JsonResponse(res, status=204)
+
 
         except CreateNotes.DoesNotExist:  # catch the exception as if the note exists
             print('Note doent exists')
             res['message'] = 'Note doesnt exists'
-            return Response(res, status=404)
+            return JsonResponse(res, status=404)
 
-        except Exception as e:
-            print(e)
-            return Response(res, status=404)
-
-        # except Exception as e:
-        #     return Response({"message": "Notes with id `{}` is not present.".format(pk)}, status=204)
 
 
 class colornote(APIView):  # Delete a Note
     """
     Retrieve, update or delete a event instance.
     """
-
     def post(self, request, pk):
-        res = {}
-        res['data'] = {}
-        res['message'] = 'Something bad happened'
-        res['success'] = False
-        try:
-            if pk is not None:
-                note = CreateNotes.objects.get(pk=pk)
-                # color = request.POST.get('color')
-                # get.color = serializers.RegexField(regex=r"^[-\w\s]+[-\w\s]+(?:,[-\w\s]*)*$", required=True)
-
-                note.color = request.POST.get('color')  # request the color from notes model, for change
-                note.save()  # save to db
-                res['message'] = "Color has been Changed."  # message for change color
-                res['success'] = True
-                res['data'] = note.id
-                return Response(res, status=204)  # return result
-
-            else:
-                res['message'] = 'Unable to find Note. Missing Note ID'  # missing id
-                return Response(res, status=200)  # return res
-
-        except CreateNotes.DoesNotExist:
-            print('Note doent exists')
-            res['message'] = 'Note doesnt exists'  # message if note doesnot exists
-            return Response(res, status=404)
-
-        except Exception as e:
-            print(e)
-            return Response(res, status=404)
-
-
-class ispinned(APIView):  # Delete a Note
-    """
-    Retrieve, update or delete a event instance.
-    """
-
-    def post(self, request, pk):  #
-        res = {}
-        res['data'] = {}
-        res['message'] = 'Something bad happened'
-        res['success'] = False
-        try:
-            if pk :
-                note = CreateNotes.objects.get(pk=pk)  # get a requested pk
-                if note.is_pinned == False:  # if not pinned
-                    note.is_pinned = True  # change it to pin
-                    note.save()  # save in a db
-                    res['message'] = "Notes has been Pinned to Top."  # message in a SMD format
-                    res['success'] = True
-                    res['data'] = note.id
-                    return Response(res, status=204)
-
-                else:
-                    note.is_pinned = False  # if not pinned, save as it is
-                    note.save()
-                    res['message'] = "Notes has been Move to Unpinned"
-                    res['success'] = False
-                    res['data'] = note.id
-                return Response(res, status=204)
-
-            else:
-                res['message'] = 'Unable to find Note. Missing Note ID'  # message for a missing id
-                return Response(res, status=200)
-
-        except CreateNotes.DoesNotExist:  # catch exception if note doesnt exists
-            print('Note doent exists')
-            res['message'] = 'Note doesnt exists'
-            return Response(res, status=404)
-
-        except Exception as e:
-            print(e)
-            return Response(res, status=404)
-
-        # except Exception as e:
-        #     return Response({"message": "Notes with id `{}` is not present.".format(pk)}, status=204)
-
-
-class copynote(APIView):
-
-    def post(self, request, pk):
-        # get note with given id
         res = {}
         res['data'] = {}
         res['message'] = 'Something bad happened'
@@ -991,187 +569,165 @@ class copynote(APIView):
         try:
             if pk:
                 note = CreateNotes.objects.get(pk=pk)
+                note.color = request.POST.get('color')  # request the color from notes model, for change
+                note.save()  # save to db
+                res['message'] = "Color has been Changed."  # message for change color
+                res['success'] = True
+                res['data'] = note.id
+                return JsonResponse(res, status=204)  # return result
+            else:
+                res['message'] = 'Unable to find Note. Missing Note ID'  # missing id
+                return JsonResponse(res, status=200)  # return res
+        except CreateNotes.DoesNotExist:
+            print('Note doent exists')
+            res['message'] = 'Note doesnt exists'  # message if note doesnot exists
+            return JsonResponse(res, status=404)
+        except Exception as e:
+            print(e)
+            return JsonResponse(res, status=404)
 
-                # kwargs = model_to_dict(instance, exclude=['id'])
-                # new_instance = CreateNotes.create(**kwargs)
 
-                title = note.title
-                description = note.description
-                created_time = note.created_time
-                remainder = note.remainder
-                is_archived = note.is_archived
-                is_deleted = note.is_deleted
-                color = note.color
-                image = note.image
-                trash = note.trash
-                is_pinned = note.is_pinned
-                label = note.label
-                # collaborate=note.collaborate
-                user = note.user
-                newcopy = CreateNotes(title=title, description=description, created_time=created_time,
-                                      remainder=remainder, is_archived=is_archived, is_deleted=is_deleted, color=color,
-                                      image=image, trash=trash, is_pinned=is_pinned, label=label, user=user)
-                # save newcopy to database
-                newcopy.save()
-                # res['data'] = {' newcopy ': newcopy}
+class ispinned(APIView):  # Delete a Note
+    """
+    Retrieve, update or delete a event instance.
+    """
+    def post(self, request, pk):  #
+        res = {}
+        res['data'] = {}
+        res['message'] = 'Something bad happened'
+        res['success'] = False
+        try:
+            if pk:
+                note = CreateNotes.objects.get(pk=pk)  # get a requested pk
+                if note.is_pinned == False:  # if not pinned
+                    note.is_pinned = True  # change it to pin
+                    note.save()  # save in a db
+                    res['message'] = "Notes has been Pinned to Top."  # message in a SMD format
+                    res['success'] = True
+                    res['data'] = note.id
+                    return JsonResponse(res, status=204)
+                else:
+                    note.is_pinned = False  # if not pinned, save as it is
+                    note.save()
+                    res['message'] = "Notes has been Move to Unpinned"
+                    res['success'] = False
+                    res['data'] = note.id
+                return JsonResponse(res, status=204)
+            else:
+                res['message'] = 'Unable to find Note. Missing Note ID'  # message for a missing id
+                return JsonResponse(res, status=200)
+
+        except CreateNotes.DoesNotExist:  # catch exception if note doesnt exists
+            print('Note doent exists')
+            res['message'] = 'Note doesnt exists'
+            return JsonResponse(res, status=404)
+        except Exception as e:
+            print(e)
+            return JsonResponse(res, status=404)
+
+class copynote(APIView):
+    def post(self, request, pk):
+        res = {}        # get note with given id
+        res['data'] = {}
+        res['message'] = 'Something bad happened'
+        res['success'] = False
+        try:
+            if pk:
+                note = CreateNotes.objects.get(pk=pk) # Accept a note pk
+                note.pk=None # create pk as a none
+                note.save()
                 res['message'] = "Note is Coped "
                 res['success'] = True
-
-                return Response(res, status=204)
+                res['data'] = note.id
+                return JsonResponse(res, status=204)
             else:
                 res['message'] = 'Unable to find Note. Missing Note ID'
-                return Response(res, status=200)
+                return JsonResponse(res, status=200)
         except CreateNotes.DoesNotExist:
             print('Note doent exists')
             res['message'] = 'Note doesnt exists'
-            return Response(res, status=404)
+            return JsonResponse(res, status=404)
         except Exception as e:
             print(e)
-            return Response(res, status=404)
-
-
-# **************************************Labels*************************************
-
-
-#
-
-class create_label(APIView):
-    def post(self, request):
-        res = {}
-        try:
-            email = request.POST.get('email')  # Get Email
-            print(email)
-            password = request.POST.get('password')  # Get Password
-            print("dd", password)
-            users = authenticate(email=email, password=password)
-            print("user_Names", users)
-            if users is not None:
-                ids = User.object.get(email=users)
-                a = ids.id
-                print("This is my id", a)
-            else:
-                res['message'] = "User DNot Exist"
-                res['success'] = False
-                return JsonResponse(res, status=404)
-
-        except Exception as e:
-            res['message'] = "User Not Exist"
-            res['success'] = False
             return JsonResponse(res, status=404)
 
-        try:
-            label_name = request.POST.get('label_name')
-            labels = Labels(label_name=label_name, user_id=a)
-            print('dskjghfdshj', labels)
-
+@custom_login_required
+def create_label(request):
+    a_user = request.user_id
+    res = {}
+    res['message'] = 'Something bad happend'
+    res['success'] = True
+    try:
+        label_name = request.POST.get('label_name')
+        labels = Labels(label_name=label_name, user_id=a_user)
+        note_user = labels.user_id
+        print("Note",note_user)
+        if a_user==note_user:
+            print('-------', labels)
             if label_name != "":
                 labels.save()
-                # res['user']=notes.user
                 res['data'] = labels.id
                 res['message'] = 'Labels are added in a database'
                 res['success'] = True
                 return JsonResponse(res, status=200)
             else:
                 res['message'] = 'Unssucess'
-                res['success'] = False
+                res['success'] = False  # in response return data in json format
+                return JsonResponse(res, status=400)
 
-                # in response return data in json format
-                return HttpResponse(res, status=204)
-
-        except Exception as e:
-            res['message'] = 'Unssucess'
-            res['success'] = False
-
-            # in response return data in json format
+        else:
+            res['message'] = 'Invalid User'
+            res['success'] = False  # in response return data in json format
             return JsonResponse(res, status=204)
 
+    except Exception as e:
+        res['message'] = 'Unssucess'
+        res['success'] = False  # in response return data in json format
+        return JsonResponse(res, status=404)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-#
-# class create_label(APIView):
-#
-#     def post(self, request):
-#         res = {}
-#         # res['data'] = serializer.data
-#         res['message'] = 'Something added'
-#         res['success'] = True
-#         try:
-#             # notes=CreateNotes.objects.all()
-#             serializer = LabelSerializer(data=request.data)
-#             print("-------", serializer)
-#             # check serialized data is valid or not
-#             if serializer.is_valid():
-#                 # if valid then save it
-#                 serializer.save()
-#                 res['data'] = serializer.data
-#                 res['message'] = 'Labels are added in a database'
-#                 res['success'] = True
-#                 return Response(res, status=200)
-#
-#
-#             else:
-#                 res['message'] = 'Unssucess'
-#                 res['success'] = False
-#
-#                 # in response return data in json format
-#                 return Response(res, status=204)
-#
-#         except Exception as e:
-#             print(e)
-
-
-class deletelabel(APIView):  # Delete a Note
-
-    def delete(self, request, pk):
-        res = {}
-        res['data'] = {}
-        res['message'] = 'Something bad happened'
-        res['success'] = False
-        try:
-            if pk is not None:
-                label = Labels.objects.get(pk=pk)  # get requested id from a Labels
-
+@custom_login_required
+def deletelabel(request,pk):  # Delete a Note
+    # a_user = authorize(request)
+    a_user=request.user_id
+    res = {}
+    print('test user', request.user_id)
+    # res['data'] = {}
+    res['message'] = 'Something bad happened'
+    res['success'] = False
+    try:
+        if pk:
+            label = Labels.objects.get(pk=pk)  # get requested id from a Labels
+            user=label.user_id
+            if a_user==user:
                 res['data'] = label.id
                 label.delete()
                 res['message'] = "Label has been deleted"
                 res['success'] = True
-                return Response(res, status=200)  # Display the data
-
+                return JsonResponse(res, status=200)  # Display the data
             else:
-                res['message'] = 'Unsuccess'
+                res['message'] = "Invalid User"
                 res['success'] = False
-                return Response(res, status=status.HTTP_201_CREATED)  # Display the data
-
-        except Exception as e:
-            print('Label doesnt exists')
-            res['message'] = 'Label doesnt exists'
+                return JsonResponse(res, status=200)  # Display the data
+        else:
+            res['message'] = 'Unsuccess'
             res['success'] = False
-            return Response(res, status=404)
+            return JsonResponse(res, status=status.HTTP_201_CREATED)  # Display the data
+    except Exception as e:
+        print('Label doesnt exists')
+        res['message'] = 'Label doesnt exists'
+        res['success'] = False
+        return JsonResponse(res, status=404)
 
 
 class updatelabel(APIView):  # Update a Note
-
-    def put(self, request, pk):  # get all the labels of given requested id(pk)
+    def post(self, request, pk):  # get all the labels of given requested id(pk)
         res = {}
         res['message'] = 'Something bad happened'
         res['success'] = False
         try:
-            if pk is not None:
+            if pk:
                 label = Labels.objects.get(pk=pk)
-
                 # requested data is serialized and store it in serializer variable
                 serializer = LabelSerializer(label, data=request.data)
                 # check serialized data is valid or not
@@ -1181,14 +737,11 @@ class updatelabel(APIView):  # Update a Note
                     res['data'] = serializer.data  # message of passing data in a SMD format
                     res['message'] = 'Labels are Updated in a database'
                     res['success'] = True
-                    return Response(res, status=status.HTTP_201_CREATED)
+                    return JsonResponse(res, status=status.HTTP_201_CREATED)
                     # in response return data in json format
-
-
             else:
                 res['message'] = 'Unssucess'  # Something wrong
                 res['success'] = False
-
                 # in response return data in json format
                 return Response(res, status=status.HTTP_201_CREATED)
             # else return error msg in response
@@ -1196,154 +749,91 @@ class updatelabel(APIView):  # Update a Note
             print('Note doenst exists')
             res['message'] = 'Note doesnt exists'
             return Response(res, status=404)
-
         except Exception as e:
             print(e)
             return Response(res, status=404)
 
-
-
 class addLabelOnNote(APIView):
-
-    def post(self,request,pk):
+    def post(self, request, pk):
         res = {}
         res['message'] = 'Something bad happened'
         res['success'] = False
         try:
             if pk:
                 note = CreateNotes.objects.get(pk=pk)  # reterieve the pk of a particular note
-
                 id = request.POST.get('id')  # reterive the id of a particular label
                 label = Labels.objects.get(id=id)
-
                 print("**********", label)
                 maplabel = MapLabel.objects.filter(note_id=note, label_id=label)  # filter the note and label
                 print("....", maplabel)
-
                 if len(maplabel) == 0:  # if maplabel field is empty
-                    obj = MapLabel(note_id=note,
-                                   label_id=label)  # assigned the notes and a label using model by creating the oject
+                    obj = MapLabel(note_id=note, label_id=label)  # assigned the notes and a label using model by creating the oject
                     obj.save()  # save the object
-
                     res['data'] = note.id  # message of passing data in a SMD format
                     res['message'] = 'Labels are added to a particular note'
                     res['success'] = True
-                    return Response(res, status=status.HTTP_201_CREATED)
+                    return JsonResponse(res, status=status.HTTP_201_CREATED)
             else:
                 res['message'] = 'Unssucess'  # Something wrong
                 res['success'] = False
-
                 # in response return data in json format
-                return Response(res, status=status.HTTP_201_CREATED)
-
+                return JsonResponse(res, status=status.HTTP_201_CREATED)
         except CreateNotes.DoesNotExist:
             print('Note doenst exists')
             res['message'] = 'Note doesnt exists'
-            return Response(res, status=404)
-
+            return JsonResponse(res, status=404)
         except Exception as e:
             print(e)
-            return Response(res, status=404)
+            return JsonResponse(res, status=404)
 
-#
 class getLabelOnNotes(APIView):
-    def post(self,request):
+    def post(self, request):
         res = {}
         res['message'] = 'Something bad happened'
         res['success'] = False
         try:
             label_id = request.POST.get('label_id')
-            label = MapLabel.objects.filter(label_id=label_id)  # Filter down a queryset based on a model's
+            label = MapLabel.objects.filter(label_id=label_id).values()  # Filter down a queryset based on a model's
             print("fdsf", label)
-
-            notes = CreateNotes.objects.get(label)
-            print("****", notes)
-
-
-            note_obj=CreateNotes.objects.filter(id=id)
-            # print("****",note_obj)
-            #
-
-
-            # note_list = []
-            # note_obj = []
-            # for i in range(len(L)):
-            #     obj = L[i]
-            #     note_obj = CreateNotes.objects.filter(title=obj)
-            #     print(note_obj, '-->note_obj')
-            #
-            #     note_list.append(note_obj)
-            # print("nlll",note_list)
-
-
-            return HttpResponse({'label': label})
-
+            note_obj = CreateNotes.objects.filter(id=id)
+            return JsonResponse({'label': label})
         except Exception as e:
             print(e)
 
 
-
 class removeLabelonNote(APIView):
-    def delete(self,request,pk):
+    def delete(self, request, pk):
         res = {}
         res['message'] = 'Something bad happened'
         res['success'] = False
         try:
-            if pk is not None:
+            if pk:
                 note = CreateNotes.objects.get(pk=pk)  # reterieve the pk of a particular note
                 print("**********", note)
-
                 id = request.POST.get('id')  # reterive the id of a particular label
                 label = Labels.objects.get(id=id)
                 print("------------", id)
-
                 print("**********", label)
                 maplabel = MapLabel.objects.filter(note_id=note, label_id=label)  # filter the note and label
                 print("....", maplabel)
                 res['data'] = note.id
                 maplabel.delete()
-                                      # message of passing data in a SMD format
+                # message of passing data in a SMD format
                 res['message'] = 'Labels are remove to a requested note'
                 res['success'] = True
-                return Response(res, status=status.HTTP_201_CREATED)
-
+                return JsonResponse(res, status=status.HTTP_201_CREATED)
             else:
                 res['message'] = 'No Notes'
                 res['success'] = False
-                return Response(res, status=status.HTTP_201_CREATED)
-
-
+                return JsonResponse(res, status=status.HTTP_201_CREATED)
         except CreateNotes.DoesNotExist:
             print('Note doenst exists')
             res['message'] = 'Note doesnt exists'
-            return Response(res, status=404)
+            return JsonResponse(res, status=404)
 
         except Exception as e:
             print(e)
-            return Response(res, status=404)
-
-
-
-
-
-
-
-
-
-        # return JsonResponse(label,status=200)
-        # Jsondata={
-        #     'label': label
-        # }
-        # # return Jsondata(dumps,status=200)
-        # dump = json.dumps(Jsondata)
-        # return HttpResponse(dump, content_type="application/json")
-        #
-
-
-
-#
-
-
+            return JsonResponse(res, status=404)
 # ***************************************************************************************************
 
 
@@ -1351,7 +841,7 @@ def showarchive(request):  # Archive Show
     res = {}
     notes = CreateNotes.objects.all().order_by('-created_time')  # Sort the Notes according to the time
     try:
-        if notes is not None:
+        if notes:
             return render(request, 'notes/index1.html', {'notes': notes})
 
     except notes.DoesNotExist:
@@ -1381,7 +871,7 @@ def showpinned(request):
     res = {}
     notes = CreateNotes.objects.all().order_by('-created_time')
     try:
-        if notes is not None:
+        if notes:
             return render(request, 'notes/pinned.html', {'notes': notes})
     except Exception as e:
         res['message'] = "No Pinned Notes"
@@ -1394,7 +884,7 @@ def showlabels(request):
     res = {}
     labels = Labels.objects.all().order_by('-created_time')
     try:
-        if labels is not None:
+        if labels:
             return render(request, 'notes/showlabels.html', {'labels': labels})
     except Exception as e:
         res['message'] = "No Labels Notes"
@@ -1422,30 +912,107 @@ class PostListAPIView(generics.ListAPIView):  # Viweing the ListAPI Views that
         res['success'] = False
 
         try:
-            query_list = CreateNotes.objects.filter().order_by('-created_time')  # Filter down a queryset based on a model's
+            query_list = CreateNotes.objects.filter().order_by(
+                '-created_time')  # Filter down a queryset based on a model's
             # fields, displaying the form to let them do this.
-
             return query_list
         except Exception as e:
             res['message'] = 'Empty'
             res['success'] = False
 
-            return HttpResponse(res,status=404)
+            return JsonResponse(res, status=404)
+
+class remainder(APIView):
+    def post(self,request):
+        auth_user=authorize(request)
+        try:
+            if auth_user:
+                print("user",auth_user)  # if request made from User.
+                remainder_col = CreateNotes.objects.filter(user=auth_user).values()  # Gets all notes  for particular user.
+                print("rv",remainder_col)
+                dates = []  # list to store only dates of every Note.
+                for i in remainder_col:
+                    if i['remainder']:  # if reminder column has some value
+                        # convert and append the date to the list
+                        dates.append(datetime.datetime.strptime(i['remainder'], "%Y-%m-%d"))
+                j = datetime.datetime.today()  # stores today's date
+                remind_dates = []  # list to store the dates for which reminder is in 5 days.
+                for i in dates:
+                    if (i - j).days <= 5:  # calculates the difference and stores the value to list
+                        remind_dates.append(i)
+                print("RM",remind_dates)
+                new_list = []  # list elements has some unwanted values and in Str format
+                for i in remind_dates:
+                    i = datetime.datetime.strftime(i, "%Y-%m-%d")
+                    i = i[:10]  # convert and slice to remove unwanted details
+                    new_list.append(i)
+                data = CreateNotes.objects.filter(user=request.user, reminder__in=new_list).values('title', 'remainder')
+                json_list = []  # get all notes with reminder # QuerySet to JSON
+                for i in data:
+                    json_list.append(i)
+                return JsonResponse(json_list, safe=False)
+            else:
+                res['message'] = 'Unsuccess'
+                res['success'] = False
+                return JsonResponse(res,status=204)
+        except Exception:
+            res['message'] = 'Not Found'
+            res['success'] = False
+            return JsonResponse(res,status=404)
+
+# @custom_login_required
+def get_all_notes(request):
+    element=request.POST.get('email')
+    print(element)
+    ele=request.POST['id']
+    print('Elements',ele)
+    items= CreateNotes.objects.filter(pk=ele).values()
+    print(items)
+    auth_user = authorize(request)
+    print("User Got it",auth_user)
+    return HttpResponse(items)
+
+def apilogin(request):
+    res = {}
+    res['message'] = 'Something bad happend'
+    res['success'] = False
+
+    print('**********************************API Login***************************')
+    try:
+        email = request.POST.get('email')  # Get Email
+        password = request.POST.get('password')  # Get Password
+        if email is None:
+            raise Exception("Email is required")
+        if password is None:
+            raise Exception("Password is required")
+        user = authenticate(email=email, password=password)
+        print("User Name", user)
+        if user:  # If it is a User
+            if user.is_active:  # If a User is active
+                login(request, user)  # Login maintains a request and a user
+                try:  # The claims in a JWT are encoded as a JSON object that is digitally signed using
+                    # JSON Web Signature (JWS) and/or encrypted using JSON Web Encryption (JWE)
+                    payload = {
+                        # 'id': User.id,
+                        'email': email,
+                        'password': password,
+                    }
+                    token_encode = jwt.encode(payload, "secret_key", algorithm='HS256').decode('utf-8')
+                    res['message'] = "Login Sucessfull"
+                    res['success'] = True
+                    res['data'] = token_encode
+                    return JsonResponse(res, status=status.HTTP_201_CREATED)
+                except Exception as e:  # Invalid
+                    result = {'error1': 'please provide an valid email and a password'}
+                    return JsonResponse(result)
+            else:
+                res['message'] = "User is Inactive"
+                return JsonResponse(res)
+        else:
+            res['message'] = 'Username or Password is not correct'  # Invalid login details
+            messages.error(request, 'Invalid login details')
+            return JsonResponse(res)
+    except Exception as e:
+        print(e)
 
 
-def pratice(request):
-    # notes=CreateNotes.objects.all()
-    a = 10, 20
-    d = [1, 2, 3, 4, 5, 6, 'Hello', 'Shahazad']
-    return render(request, 'notes/pratice.html', {'d': d}, {'a', a})
-
-#
-# from rest_framework.views import APIView
-# from rest_framework.permissions import IsAuthenticated
-# from rest_framework.response import Response
-#
-# class MySampleView(APIView):
-#     permission_classes = (IsAuthenticated,)
-#
-# def get(self, request):
-#     return Response(data={"status": True})
