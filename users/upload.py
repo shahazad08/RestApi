@@ -15,11 +15,11 @@ def upload_profilenew(request):
         if request.FILES['pic']:
             file = request.FILES['pic']  # Uploading a Pic
             print("Name of a File",file)
-            tag = request.POST.get('email')
+            tag_file= request.POST.get('email')
             valid_image=imghdr.what(file)
             print("Image Extension",valid_image)
             if valid_image:
-                key = tag + '.jpeg'
+                key = tag_file
                 services.s3.upload_fileobj(file, 'fundoobucket', Key=key)
                 res['message'] = "Sucessfully Uploaded the Image"
                 res['Sucess'] = True
