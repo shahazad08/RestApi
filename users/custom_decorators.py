@@ -18,9 +18,6 @@ def custom_login_required(function):
         if entry:
             return function(request, *args, **kwargs)
         else:
-            res={}
-            res['mesaage']="Unauthorized Token"
-            res['success']=False
-            # raise PermissionDenied
+            raise PermissionDenied
     return wrap
 
