@@ -39,7 +39,7 @@ class User(AbstractBaseUser, PermissionsMixin):  # User model is the built-in Dj
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
-
+    image = models.ImageField(default=None, null=True)
     object = UserManager()  # Created the object of the User Manager module which contains the fields..
 
     USERNAME_FIELD = 'email'
@@ -60,8 +60,8 @@ class CreateNotes(models.Model):
     color = models.CharField(default=None, max_length=50, blank=True, null=True)
     image = models.ImageField(default=None, null=True)
     trash = models.BooleanField(default=False)
-    is_pinned = models.NullBooleanField(blank=True, null=True, default=None)
-    label = models.CharField(max_length=50,default=None)
+    is_pinned = models.NullBooleanField(blank=True,default=False)
+    label = models.CharField(max_length=50,default=None,null=True)
     collaborate = models.ManyToManyField(User, null=True, blank=True, related_name='collaborated_user')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owner', null=True, blank=True)
 
