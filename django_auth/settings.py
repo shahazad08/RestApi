@@ -18,7 +18,7 @@ SECRET_KEY = 'oz$*y0o9cc3eqj^u$!zl6tcbt3#z603w@c8c)2w=-sy(yy_a2^'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = []
 
 AUTH_USER_MODEL = "users.User"
 
@@ -57,23 +57,13 @@ JWT_AUTH = {
 
 }
 
-# CACHES = {
-#     'default': {
-#         'BACKEND': 'django_redis.cache.RedisCache',
-#         'LOCATION': 'redis://127.0.0.1:6379/',
-#         'OPTIONS': {
-#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-#         }
-#     }
-# }
-
 
 CACHES = {
     'default': {
-        'BACKEND': os.getenv("BACKEND"),
-        'LOCATION': os.getenv("LOCATION"),
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/',
         'OPTIONS': {
-            'CLIENT_CLASS': os.getenv("CLIENT_CLASS"),
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
     }
 }
@@ -81,6 +71,7 @@ CACHES = {
 CACHE_TTL = 60 * 15
 
 INSTALLED_APPS = [
+    'users',
     # 'Notes',
     'django.contrib.auth',
     # 'django.admin_view_permission',
@@ -91,8 +82,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework_swagger',
     'rest_framework',
-    'django_filters',
-    'users'
+    'django_filters'
 ]
 
 MIDDLEWARE = [
@@ -110,7 +100,6 @@ ROOT_URLCONF = 'django_auth.urls'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
-        # 'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly',
         # 'rest_framework.authentication.BasicAuthentication',
         # 'rest_framework.authentication.SessionAuthentication',
         # 'rest_framework.authentication.TokenAuthentication',
@@ -125,24 +114,6 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.MultiPartParser',
     ),
 }
-
-
-SWAGGER_SETTINGS = {
-    'SECURITY_DEFINITIONS': {
-        "api_key": {
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
-          },
-    },
-}
-
-
-
-
-
-
-
 
 
 
@@ -176,37 +147,6 @@ DATABASES = {
         'PORT': '',
     }
 }
-
-
-
-
-# import dj_database_url
-# DATABASES['default'] = dj_database_url.config()
-#
-
-
-
-
-
-
-
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-#         'NAME': os.path.join(BASE_DIR, 'db.postgresql'),
-#         # 'NAME': os.environ.get("NAME", ''),
-#         'USER':os.environ.get("USER", ""),
-#         'PASSWORD': os.environ.get("PASSWORD", ""),
-#         'HOST': 'localhost',
-#         'PORT': '',
-#     }
-# }
-
-
-
-# DJANGO_SETTINGS_MODULES='django_auth.settings'
-
 
 
 # Password validation
@@ -245,4 +185,3 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 CSRF_COOKIE_SECURE = False
-STATIC_ROOT = os.path.join(BASE_DIR, "static/")
